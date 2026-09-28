@@ -1,0 +1,123 @@
+{
+  "name": "Your Name",
+  "title": "Angular Frontend Developer",
+  "email": "you@example.com",
+  "phone": "+91 90000 00000",
+  "location": "Ahmedabad, Gujarat, India",
+  "linkedin": "linkedin.com/in/your-profile",
+  "totalExperienceYears": 5,
+  "summary": "Frontend-focused Software Developer with 5 years of experience building scalable web applications using Angular, TypeScript and JavaScript, with hands-on exposure to Node.js, REST APIs and backend development.",
+  "skills": {
+    "Frontend Technologies": [
+      "Angular",
+      "TypeScript",
+      "JavaScript",
+      "HTML",
+      "CSS",
+      "Bootstrap",
+      "Tailwind CSS",
+      "Angular Material",
+      "RxJS",
+      "NgRx"
+    ],
+    "Backend & Cloud": [
+      "Node.js",
+      "REST APIs",
+      "JWT Authentication"
+    ],
+    "DevOps & Tools": [
+      "Git",
+      "GitHub",
+      "CI/CD (GitHub Actions)",
+      "Angular CLI",
+      "Agentic AI"
+    ],
+    "Languages": [
+      "English",
+      "Gujarati",
+      "Hindi"
+    ]
+  },
+  "extraKnownSkills": [
+    "Angular Universal",
+    "Server-Side Rendering (SSR)",
+    "HttpClient",
+    "npm",
+    "SEO",
+    "Responsive Design",
+    "Authentication Workflows",
+    "Error Handling",
+    "Automated Testing",
+    "AI Voice Assistants",
+    "Payment Integration"
+  ],
+  "experience": [
+    {
+      "role": "Angular Frontend Developer",
+      "company": "MOBMAXIME",
+      "location": "Ahmedabad",
+      "start": "June 2021",
+      "end": "Present",
+      "bullets": [
+        "Developed and maintained scalable web applications for Proveera Exports and ThriveHealth using Angular, ensuring a user-centric approach.",
+        "Built and optimized CI/CD pipelines with GitHub Actions for automated testing and deployment, enhancing efficiency across multiple Angular projects.",
+        "Designed responsive user interfaces with Tailwind CSS and Angular Material, ensuring brand consistency and an intuitive user experience.",
+        "Integrated RESTful APIs into Angular applications using HttpClient, enhancing data communication, and implemented strong error handling and authentication workflows.",
+        "Improved application performance and SEO by establishing server-side rendering (SSR) with Angular Universal.",
+        "Gained foundational knowledge in server-side development with Node.js, including RESTful API creation and managing dependencies through npm."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Sketchplay",
+      "bullets": [
+        "Developed and maintained Sketchplay, a comprehensive sports tournament management platform enabling organizers to create, schedule, and run tournaments end-to-end.",
+        "Built features for team/player registration, payment collection (including pay-later and installment options), and invoice tracking across the full tournament lifecycle.",
+        "Implemented tournament scheduling tools including pool play, bracket generation, and game-day management for organizers and coaches.",
+        "Delivered admin tools for managing rosters, tracking registrations, and communicating with participants across multiple tournaments and organizations."
+      ]
+    },
+    {
+      "name": "Voice Agents",
+      "bullets": [
+        "Developed an AI-powered voice booking assistant for a client that enhances customer engagement through natural conversations.",
+        "Streamlined appointment scheduling by automating call responses, significantly reducing missed calls and scheduling conflicts.",
+        "Implemented features tailored for diverse industries, including salons, restaurants, healthcare, and service-based businesses, improving operational efficiency.",
+        "Conducted user testing and gathered feedback to refine the assistant's performance, ensuring high user satisfaction and adaptability."
+      ]
+    },
+    {
+      "name": "Proveera Exports",
+      "bullets": [
+        "Developed Proveera Exports, a mobile and web-based platform focused on quality exports.",
+        "Ensured top-quality products and timely fulfillment to enhance overall customer experience.",
+        "Collaborated with industry experts to leverage over a decade of experience in the export sector.",
+        "Implemented best-in-class product delivery methods to achieve complete customer satisfaction.",
+        "Streamlined order placement, shipment, and delivery processes for efficiency through professional support and a structured system."
+      ]
+    },
+    {
+      "name": "ThriveHealth",
+      "bullets": [
+        "Developed and implemented ThriveHealth, an integrated platform designed for healthcare job placements.",
+        "Created a user-friendly healthcare job portal enabling facilities to post job openings and manage shifts efficiently.",
+        "Designed features allowing nurses to apply for shifts, track attendance, and manage their timesheets seamlessly.",
+        "Engineered a web portal that empowers healthcare facilities to create job listings and oversee timesheet approvals effectively.",
+        "Focused on enhancing user experience and operational efficiency, supporting the healthcare sector's staffing needs from August 2022 to August 2024."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Your University",
+      "degree": "MCA, Grade - X/10",
+      "year": "2021"
+    },
+    {
+      "institution": "Your College",
+      "degree": "BCA, Grade - X/10",
+      "year": "2019"
+    }
+  ]
+}

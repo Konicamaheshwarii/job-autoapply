@@ -1,0 +1,8 @@
+node_modules/
+.env
+.wwebjs_auth/
+.wwebjs_cache/
+data/
+out/
+# personal data - copy cv/master-cv.example.json to cv/master-cv.json
+cv/master-cv.json

@@ -1,0 +1,3 @@
+# Patches must keep exact bytes or `git apply` fails after checkout
+patches/*.diff -text
+*.cmd text eol=crlf

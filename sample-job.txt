@@ -1,0 +1,10 @@
+🔥 We're Hiring – Angular Developer 🔥
+Company: TechNova Solutions Pvt Ltd
+Location: Ahmedabad (Hybrid)
+Experience: 3-6 years
+Skills: Angular 16+, TypeScript, RxJS, NgRx, HTML5/CSS3, REST API integration, Git, Jest/Karma unit testing
+Responsibilities:
+- Build reusable Angular components and libraries
+- Integrate REST APIs and manage state with NgRx
+- Optimize performance, SSR experience is a plus
+Interested candidates share CV at careers@technova-example.com
