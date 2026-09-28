@@ -93,12 +93,17 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
   }
   t ??= ruleTailor(cv, job);
 
-  const after = keywordScore(job.keywords, cvToText(t.cv));
+  // ATS as a recruiter's system sees it: only what is printed on the PDF (original CV vs tailored CV).
+  const printedText = (c) => cvToText({ ...c, extraKnownSkills: [] });
+  const original = keywordScore(job.keywords, printedText(cv));
+  const after = keywordScore(job.keywords, printedText(t.cv));
   const score = rs.score;
   const scores = {
     score, keywordScore: before.score, fitScore: t.fitScore ?? '',
-    atsBefore: before.score, atsAfter: after.score, missing: before.missing.join('; '),
+    atsBefore: original.score, atsAfter: after.score, missing: after.missing.join('; '),
   };
+  const atsLine = `ATS keywords: ${original.score}% (original CV) → ${after.score}% (tailored CV)`
+    + `\nMissing from CV: ${after.missing.join(', ') || 'none'}`;
 
   const channel = job.apply_email && gmail.user ? 'email' : job.apply_whatsapp && io.sendWhatsApp ? 'whatsapp' : 'manual';
 
@@ -125,7 +130,7 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
 
   if (rules.dryRun) {
     store.recordApplication(job, true);
-    await notify(`🧪 *DRY RUN* would apply via ${channel} to ${base.contact}\n${job.title} @ ${job.company || '?'}\nScore ${score}/100 (ATS ${before.score}→${after.score})\n${t.fitReason}`);
+    await notify(`🧪 *DRY RUN* would apply via ${channel} to ${base.contact}\n${job.title} @ ${job.company || '?'}\nScore ${score}/100\n${atsLine}`);
     return { ...result, status: 'dry-run' };
   }
 
@@ -145,7 +150,7 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
   }
 
   store.recordApplication(job, false);
-  await notify(`✅ *Applied* via ${channel} to ${base.contact}\n${job.title} @ ${job.company || '?'}\nScore ${score}/100 (ATS ${before.score}→${after.score})\nMissing: ${before.missing.join(', ') || 'none'}`);
+  await notify(`✅ *Applied* via ${channel} to ${base.contact}\n${job.title} @ ${job.company || '?'}\nScore ${score}/100\n${atsLine}`);
   return { ...result, status: 'applied' };
 }
 

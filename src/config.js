@@ -47,7 +47,9 @@ module.exports = {
       .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
     // On start, check posts from today (since midnight) that arrived while the bot was off
     backfillToday: bool(process.env.BACKFILL_TODAY, true),
-    backfillLimit: num(process.env.BACKFILL_LIMIT, 300),
+    backfillLimit: num(process.env.BACKFILL_LIMIT, 500),
+    // How many days of old posts to check on start: 1 = today, 2 = today + yesterday, ...
+    backfillDays: Math.max(1, num(process.env.BACKFILL_DAYS, 1)),
   },
   gmail: {
     user: process.env.GMAIL_USER || '',

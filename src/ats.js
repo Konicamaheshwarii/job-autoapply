@@ -20,6 +20,13 @@ const SYNONYMS = {
   rxjs: ['rxjs', 'reactive programming'],
   ngrx: ['ngrx', 'state management'],
   bootstrap: ['bootstrap'],
+  scss: ['scss', 'sass'],
+  mongodb: ['mongodb', 'mongo', 'mongo db'],
+  'express.js': ['express', 'express.js', 'expressjs'],
+  sql: ['sql', 'mysql', 'ms sql'],
+  'unit testing': ['unit testing', 'unit test', 'unit tests'],
+  'angular signals': ['signals', 'angular signals'],
+  'standalone components': ['standalone components', 'standalone'],
 };
 
 const LOOKUP = new Map();

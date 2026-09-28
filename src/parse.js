@@ -18,7 +18,8 @@ const TECH = [
   ['AWS', 'aws'], ['Azure', 'azure'], ['GCP', 'gcp', 'google cloud'], ['Docker', 'docker'], ['Kubernetes', 'kubernetes', 'k8s'],
   ['CI/CD', 'ci\\s?/\\s?cd', 'github actions', 'jenkins'], ['Git', 'git(?:hub|lab)?'],
   ['Jest', 'jest'], ['Karma', 'karma'], ['Jasmine', 'jasmine'], ['Cypress', 'cypress'], ['Unit Testing', 'unit test'],
-  ['MuleSoft', 'mulesoft', 'mule\\s?4'], ['Salesforce', 'salesforce'], ['SAP', '\\bsap\\b'], ['Kafka', 'kafka'], ['Spark', 'spark'],
+  ['MuleSoft', 'mulesoft', 'mule\\s?4'], ['Salesforce', 'salesforce'], ['ServiceNow', 'servicenow', 'service now'],
+  ['Svelte', 'svelte'], ['Unity', 'unity3d', 'unity'], ['Blockchain', 'blockchain', 'solidity', 'web3'], ['SAP', '\\bsap\\b'], ['Kafka', 'kafka'], ['Spark', 'spark'],
   ['Figma', 'figma'], ['SSR', 'ssr', 'server[\\s-]side rendering', 'angular universal'], ['Responsive Design', 'responsive'],
   ['Agentic AI', 'agentic'], ['Generative AI', 'gen\\s?ai', 'generative ai', '\\bllm'],
 ].map(([name, ...src]) => [name, new RegExp(`(?<![a-z0-9])(?:${src.join('|')})(?![a-z0-9+#])`, 'i')]);

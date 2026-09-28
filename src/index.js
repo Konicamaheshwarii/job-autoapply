@@ -190,6 +190,8 @@ client.on('message', (msg) => enqueue(msg));
 async function backfillToday(chats) {
   const since = new Date();
   since.setHours(0, 0, 0, 0);
+  since.setDate(since.getDate() - (whatsapp.backfillDays - 1));
+  const period = whatsapp.backfillDays === 1 ? 'today' : `the last ${whatsapp.backfillDays} days`;
   for (const chat of chats) {
     let msgs;
     try {
@@ -199,14 +201,14 @@ async function backfillToday(chats) {
       continue;
     }
     const todays = msgs.filter((m) => m.timestamp * 1000 >= since.getTime() && !m.fromMe);
-    log(`Checking ${todays.length} message(s) from today in "${chat.name}"...`);
-    await notify(`🔎 Checking ${todays.length} message(s) posted today in "${chat.name}"...`);
+    log(`Checking ${todays.length} message(s) from ${period} in "${chat.name}"...`);
+    await notify(`🔎 Checking ${todays.length} message(s) posted ${period} in "${chat.name}"...`);
     for (const m of todays) {
       await enqueue(m);
       await new Promise((r) => setTimeout(r, 3000)); // stay under free AI rate limits
     }
-    log(`Finished today's messages in "${chat.name}". Now waiting for new posts.`);
-    await notify(`✅ Done checking today's posts in "${chat.name}". Waiting for new ones.`);
+    log(`Finished messages from ${period} in "${chat.name}". Now waiting for new posts.`);
+    await notify(`✅ Done checking posts from ${period} in "${chat.name}". Waiting for new ones.`);
   }
 }
 
