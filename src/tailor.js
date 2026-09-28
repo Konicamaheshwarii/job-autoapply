@@ -33,7 +33,7 @@ const SHAPE = `Return JSON exactly like:
  "whatsapp_message": "2-4 line WhatsApp message to the recruiter introducing the candidate and saying the CV is attached"
 }
 fit_score 0-100: how well the candidate's REAL experience matches the role (tech stack, seniority, domain). role_match=false if the role is a different field entirely (e.g. Java backend, sales, QA-only, data science).
-Order projects most relevant first; include only projects that help (at least 2).`;
+Include EVERY project from the master CV (never drop one), ordered most relevant to this job first, each with 3-4 rewritten bullets.`;
 
 async function tailorCv(cv, job) {
   const allowedSkills = [...Object.values(cv.skills).flat(), ...(cv.extraKnownSkills || [])];
@@ -96,9 +96,10 @@ function sanitize(raw, cv, job, allowedSkills) {
     const master = p && masterProjects.get(String(p.name).toLowerCase().trim());
     if (!master || projects.some((x) => x.name === master.name)) continue;
     const bullets = cleanList(p.bullets).filter(noInventedNumbers);
-    projects.push({ name: master.name, bullets: bullets.length ? bullets : master.bullets });
+    projects.push({ name: master.name, bullets: bullets.length >= 2 ? bullets : master.bullets });
   }
-  if (projects.length < 2) for (const p of cv.projects) if (!projects.some((x) => x.name === p.name)) projects.push(p);
+  // Every project stays on the CV; ones the AI skipped go after its picks, in the CV's own words.
+  for (const p of cv.projects) if (!projects.some((x) => x.name === p.name)) projects.push(p);
 
   const summary = raw.summary && noInventedNumbers(raw.summary) ? String(raw.summary).trim() : cv.summary;
   const headline = /angular|front[\s-]?end|ui|web|software|javascript|typescript|full[\s-]?stack/i.test(raw.headline || '')
