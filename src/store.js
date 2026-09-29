@@ -47,9 +47,12 @@ function contactKey(job) {
 function alreadyApplied(job) {
   const key = contactKey(job);
   const cutoff = Date.now() - rules.reapplyAfterDays * 86400000;
-  const titleKey = hash(`${job.company}|${job.title}`);
+  // Same company + same title counts as the same job, but only when the company is actually known:
+  // "Senior Angular Developer" at two unnamed companies are two different jobs.
+  const titleKey = job.company ? hash(`${job.company}|${job.title}`) : null;
   // Dry-run entries only block other dry runs, so going live doesn't skip jobs seen while testing.
-  return state.applied.some((a) => a.at > cutoff && (!a.dryRun || rules.dryRun) && (a.key === key || a.titleKey === titleKey));
+  return state.applied.some((a) => a.at > cutoff && (!a.dryRun || rules.dryRun)
+    && (a.key === key || (titleKey && a.titleKey === titleKey)));
 }
 
 function appliedToday() {
