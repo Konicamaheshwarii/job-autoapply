@@ -1,5 +1,5 @@
 const { askJson } = require('./ai');
-const { ruleTailor } = require('./tailor-rules');
+const { ruleTailor, wantsModernAngular } = require('./tailor-rules');
 const { mentions } = require('./ats');
 
 // Words that upgrade seniority/scope beyond the CV. Text containing them is replaced by the CV's own wording.
@@ -40,7 +40,7 @@ async function tailorCv(cv, job) {
   const user = `${SHAPE}
 
 JOB POSTING:
-${JSON.stringify({ ...job, summary: undefined, parsedBy: undefined })}
+${JSON.stringify({ ...job, summary: undefined, parsedBy: undefined, raw: undefined })}
 
 MASTER CV:
 ${JSON.stringify({ ...cv, email: undefined, phone: undefined, linkedin: undefined })}
@@ -69,18 +69,27 @@ function sanitize(raw, cv, job, allowedSkills) {
 
   // Skills: exact matches from the allowed list only.
   const allowedByLower = new Map(allowedSkills.map((s) => [s.toLowerCase(), s]));
+  // Extra known skills (MongoDB, Jest...) are printed only when this job asks for them, to keep the CV focused.
+  const jobText = [job.title, ...(job.keywords || []), ...(job.responsibilities || []), job.summary || ''].join('\n');
+  const extras = new Set((cv.extraKnownSkills || []).map((s) => s.toLowerCase()));
+  const relevant = (s) => !extras.has(s.toLowerCase()) || mentions(jobText, s) || (wantsModernAngular(job) && /signals|standalone/i.test(s));
   const skills = {};
   for (const [cat, list] of Object.entries(raw.skills || {})) {
-    const kept = [...new Set(cleanList(list).map((s) => allowedByLower.get(s.toLowerCase())).filter(Boolean))];
+    const kept = [...new Set(cleanList(list).map((s) => allowedByLower.get(s.toLowerCase())).filter(Boolean))].filter(relevant);
     if (kept.length) skills[cat] = kept;
   }
   const finalSkills = Object.keys(skills).length ? skills : structuredClone(cv.skills);
   // ATS: every skill the job asks for that the candidate really has must be printed on the CV.
-  const jobText = [job.title, ...(job.keywords || []), ...(job.responsibilities || [])].join('\n');
   const printed = new Set(Object.values(finalSkills).flat().map((x) => x.toLowerCase()));
   const firstCat = Object.keys(finalSkills)[0];
   for (const x of allowedSkills) {
-    if (!printed.has(x.toLowerCase()) && !(cv.skills.Languages || []).includes(x) && mentions(jobText, x)) finalSkills[firstCat].push(x);
+    if (printed.has(x.toLowerCase()) || (cv.skills.Languages || []).includes(x)) continue;
+    const wanted = extras.has(x.toLowerCase()) ? relevant(x) : mentions(jobText, x);
+    if (!wanted) continue;
+    const cats = Object.keys(finalSkills);
+    const want = /mongo|express|sql|docker|aws|node|api|kubernetes/i.test(x) ? /back|cloud|server|data/i
+      : /test|jest|karma|jasmine|git|ci\/cd|docker/i.test(x) ? /devops|tool|test/i : null;
+    finalSkills[(want && cats.find((c) => want.test(c))) || firstCat].push(x);
   }
   // Keep spoken languages if the model dropped them.
   if (cv.skills.Languages && !Object.values(finalSkills).flat().some((s) => cv.skills.Languages.includes(s))) {

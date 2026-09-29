@@ -67,5 +67,7 @@ module.exports = {
     maxDelaySec: num(process.env.MAX_SEND_DELAY_SEC, 180),
     // true = do everything except actually sending
     dryRun: bool(process.env.DRY_RUN, true),
+    // Let AI rewrite CV bullets. Off: it tends to invent experience to match the job.
+    aiTailoring: bool(process.env.AI_TAILORING, false),
   },
 };

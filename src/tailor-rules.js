@@ -14,7 +14,13 @@ function byRelevance(items, toText, jobKeywords) {
     .map((x) => x.item);
 }
 
-const listJoin = (a) => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+// "Angular 16+", "Angular 19 and above"... -> show Signals / Standalone Components experience.
+function wantsModernAngular(job) {
+  const text = [job.title, job.summary, ...(job.responsibilities || []), job.raw || ''].join(' ');
+  return /angular\s*v?(1[6-9]|[2-9]\d)\b/i.test(text);
+}
+
+const listJoin =(a) => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 
 function ruleTailor(cv, job) {
   const kw = job.keywords || [];
@@ -22,7 +28,7 @@ function ruleTailor(cv, job) {
   // Skills the job asks for that the CV really has, in the CV's own spelling.
   // Checked as "does the job mention this skill", so "Angular Material" doesn't match a plain "Angular" job.
   const jobText = [job.title, ...kw, ...(job.responsibilities || [])].join('\n');
-  const jobWants = (skill) => mentions(jobText, skill);
+  const jobWants = (skill) => mentions(jobText, skill) || (wantsModernAngular(job) && /signals|standalone/i.test(skill));
   const matchedSkills = cvSkills.filter((s) => !(cv.skills.Languages || []).includes(s) && jobWants(s));
   const top = [...new Set(matchedSkills)].slice(0, 5);
 
@@ -87,4 +93,4 @@ I have attached my CV for your review. I would welcome the opportunity to discus
   };
 }
 
-module.exports = { ruleTailor };
+module.exports = { ruleTailor, wantsModernAngular };

@@ -110,6 +110,7 @@ function parseJobPost(raw) {
     apply_link: link,
     summary: flat.slice(0, 160),
     parsedBy: 'rules',
+    raw: text.slice(0, 3000),
   };
 }
 

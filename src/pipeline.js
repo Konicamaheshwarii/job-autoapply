@@ -78,12 +78,10 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
       { score: rs.score, keywordScore: before.score, atsBefore: before.score, missing: before.missing.join('; ') });
   }
 
-  const channelFor = () => (job.apply_email && gmail.user ? 'email' : job.apply_whatsapp && io.sendWhatsApp ? 'whatsapp' : 'manual');
-  const willSend = channelFor() !== 'manual' && !rules.dryRun && store.appliedToday() < rules.maxPerDay;
-
-  // Spend AI only on applications that really go out; otherwise (or if AI is down) tailor by rules.
+  // The CV keeps the candidate's own bullets word for word (reordered, skills matched to the job).
+  // AI rewriting is off by default: it kept inventing work (microservices, Jest, lazy loading...) to fit the job.
   let t;
-  if (willSend) {
+  if (rules.aiTailoring) {
     try {
       t = await tailorCv(cv, job);
       if (!t.roleMatch) return skip(`AI says different role: ${t.fitReason}`, { score: rs.score, keywordScore: before.score });
