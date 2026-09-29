@@ -31,6 +31,10 @@ function markSeen(text) {
   return true;
 }
 
+function isSeen(text) {
+  return Boolean(state.seen[hash(text)]);
+}
+
 function unmarkSeen(text) {
   delete state.seen[hash(text)];
   save();
@@ -66,4 +70,4 @@ function logRow(row) {
   fs.appendFileSync(paths.log, [new Date().toISOString(), ...cols.map((c) => row[c])].map(csvCell).join(',') + '\n');
 }
 
-module.exports = { markSeen, unmarkSeen, alreadyApplied, appliedToday, recordApplication, logRow };
+module.exports = { markSeen, unmarkSeen, isSeen, alreadyApplied, appliedToday, recordApplication, logRow };

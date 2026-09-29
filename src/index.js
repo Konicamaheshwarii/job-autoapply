@@ -4,7 +4,7 @@ const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const { ROOT, whatsapp, rules, gmail, ai } = require('./config');
 const { processPost } = require('./pipeline');
-const { markSeen, unmarkSeen } = require('./store');
+const { markSeen, unmarkSeen, isSeen } = require('./store');
 const { verifyMailer } = require('./mailer');
 const { closePdf } = require('./pdf');
 
@@ -164,6 +164,7 @@ client.on('ready', async () => {
     }
   }
   log(`AI: ${ai.model} | min score ${rules.minScore} | max ${rules.maxPerDay}/day | ${rules.dryRun ? 'DRY RUN (nothing is sent)' : 'LIVE'}`);
+  watchedChats = watched;
   if (whatsapp.backfillToday && watched.length) setTimeout(() => backfillToday(watched), 2000);
   await notify(`🤖 Job bot started (${rules.dryRun ? 'dry run' : 'LIVE'}). Watching: ${watched.map((g) => g.name).join(', ') || (groups.length ? 'nothing - check WHATSAPP_GROUPS' : whatsapp.groups.join(', '))}`);
 });
@@ -186,33 +187,76 @@ function enqueue(msg) {
 
 client.on('message', (msg) => enqueue(msg));
 
-// Posts from earlier today that arrived while the bot was off.
-async function backfillToday(chats) {
+// Posts that arrived while the bot was off (or while WhatsApp silently stopped sending events).
+let watchedChats = [];
+let backfillRunning = false;
+
+async function backfillToday(chats, { quiet = false } = {}) {
+  if (backfillRunning) return;
+  backfillRunning = true;
   const since = new Date();
   since.setHours(0, 0, 0, 0);
   since.setDate(since.getDate() - (whatsapp.backfillDays - 1));
   const period = whatsapp.backfillDays === 1 ? 'today' : `the last ${whatsapp.backfillDays} days`;
-  for (const chat of chats) {
-    let msgs;
-    try {
-      msgs = await withTimeout(chat.fetchMessages({ limit: whatsapp.backfillLimit }), 180000, 'Loading earlier messages');
-    } catch (e) {
-      log(`Could not load today's messages from "${chat.name}": ${e.message}`);
-      continue;
+  try {
+    for (const chat of chats) {
+      let msgs;
+      try {
+        msgs = await withTimeout(chat.fetchMessages({ limit: whatsapp.backfillLimit }), 180000, 'Loading earlier messages');
+      } catch (e) {
+        log(`Could not load earlier messages from "${chat.name}": ${e.message}`);
+        if (restartIfBroken(e)) return;
+        continue;
+      }
+      const recent = msgs.filter((m) => m.timestamp * 1000 >= since.getTime() && !m.fromMe);
+      const fresh = recent.filter((m) => m.hasMedia || ((m.body || '').trim().length >= 40 && !isSeen(m.body)));
+      if (quiet && !fresh.length) continue;
+      log(`Checking ${fresh.length} new message(s) from ${period} in "${chat.name}" (${recent.length - fresh.length} already checked)...`);
+      if (!quiet) await notify(`🔎 Checking ${fresh.length} message(s) posted ${period} in "${chat.name}"...`);
+      for (const m of fresh) {
+        await enqueue(m);
+        await new Promise((r) => setTimeout(r, 3000)); // stay under free AI rate limits
+      }
+      log(`Finished messages from ${period} in "${chat.name}". Now waiting for new posts.`);
+      if (!quiet) await notify(`✅ Done checking posts from ${period} in "${chat.name}". Waiting for new ones.`);
     }
-    const todays = msgs.filter((m) => m.timestamp * 1000 >= since.getTime() && !m.fromMe);
-    log(`Checking ${todays.length} message(s) from ${period} in "${chat.name}"...`);
-    await notify(`🔎 Checking ${todays.length} message(s) posted ${period} in "${chat.name}"...`);
-    for (const m of todays) {
-      await enqueue(m);
-      await new Promise((r) => setTimeout(r, 3000)); // stay under free AI rate limits
-    }
-    log(`Finished messages from ${period} in "${chat.name}". Now waiting for new posts.`);
-    await notify(`✅ Done checking posts from ${period} in "${chat.name}". Waiting for new ones.`);
+  } finally {
+    backfillRunning = false;
   }
 }
 
 setInterval(() => log(`alive - ${received} group message(s) received so far`), 15 * 60 * 1000);
+
+// Safety net 1: re-scan the group every 20 min, in case WhatsApp stopped delivering live messages.
+setInterval(() => {
+  if (watchedChats.length) backfillToday(watchedChats, { quiet: true }).catch((e) => log('re-scan failed:', e.message));
+}, 20 * 60 * 1000);
+
+// Safety net 2: after the PC sleeps, the WhatsApp Web connection goes stale without any error. Restart.
+let lastTick = Date.now();
+setInterval(() => {
+  const gap = Date.now() - lastTick;
+  lastTick = Date.now();
+  if (gap > 3 * 60 * 1000) {
+    log(`PC was asleep for ${Math.round(gap / 60000)} min. Restarting to reconnect WhatsApp...`);
+    setTimeout(() => process.exit(2), 2000);
+  }
+}, 60 * 1000);
+
+// Safety net 3: WhatsApp says it's no longer connected -> restart.
+setInterval(async () => {
+  if (!started) return;
+  try {
+    const state = await withTimeout(client.getState(), 30000, 'Connection check');
+    if (state !== 'CONNECTED') {
+      log(`WhatsApp state is ${state}. Restarting...`);
+      setTimeout(() => process.exit(2), 2000);
+    }
+  } catch (e) {
+    log(`Connection check failed (${e.message}). Restarting...`);
+    setTimeout(() => process.exit(2), 2000);
+  }
+}, 10 * 60 * 1000);
 
 async function shutdown() {
   log('Shutting down...');
