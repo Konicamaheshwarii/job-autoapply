@@ -91,13 +91,27 @@ async function handle(msg) {
   received++;
   const chat = { name };
 
+  const text = msg.body || '';
+  // Media posts are remembered by message id, so the 20-min re-scan doesn't download them again.
+  const mediaKey = msg.hasMedia ? `media:${msg.id?._serialized || msg.id?.id}` : null;
+  if (mediaKey && isSeen(mediaKey)) return;
+
   let image;
   if (msg.hasMedia && msg.type === 'image') {
-    const media = await msg.downloadMedia();
-    if (media) image = { mimetype: media.mimetype, data: media.data };
+    try {
+      const media = await withTimeout(msg.downloadMedia(), 60000, 'Image download');
+      if (media) image = { mimetype: media.mimetype, data: media.data };
+    } catch (e) {
+      // WhatsApp Web sometimes can't fetch old/expired images ("t" errors). Use the caption if there is one.
+      log(`Could not download image in "${name}" (${e.message || e})${text ? ', using its caption' : ', skipped'}`);
+    }
   }
-  const text = msg.body || '';
-  if (!image && text.trim().length < 40) return log(`Short message in "${name}", ignored`); // "thanks", "ok", stickers...
+  if (mediaKey) markSeen(mediaKey);
+
+  // Skip "ok", "thanks", "interested"... but never a short post that mentions the role.
+  const mentionsRole = whatsapp.roleKeywords.some((k) => text.toLowerCase().includes(k));
+  if (!image && text.trim().length < 40 && !mentionsRole) return log(`Short message in "${name}" (no Angular/frontend words), ignored`);
+  if (!image && !text.trim()) return;
   const seenKey = text + (image ? image.data.slice(0, 5000) : '');
   if (!markSeen(seenKey)) return log('duplicate post, skipped');
 
@@ -209,7 +223,10 @@ async function backfillToday(chats, { quiet = false } = {}) {
         continue;
       }
       const recent = msgs.filter((m) => m.timestamp * 1000 >= since.getTime() && !m.fromMe);
-      const fresh = recent.filter((m) => m.hasMedia || ((m.body || '').trim().length >= 40 && !isSeen(m.body)));
+      const roleWord = (t) => whatsapp.roleKeywords.some((k) => t.toLowerCase().includes(k));
+      const fresh = recent.filter((m) => (m.hasMedia
+        ? !isSeen(`media:${m.id?._serialized || m.id?.id}`)
+        : (m.body || '').trim().length >= 40 || roleWord(m.body || '')) && !isSeen(m.body || ''));
       if (quiet && !fresh.length) continue;
       log(`Checking ${fresh.length} new message(s) from ${period} in "${chat.name}" (${recent.length - fresh.length} already checked)...`);
       if (!quiet) await notify(`🔎 Checking ${fresh.length} message(s) posted ${period} in "${chat.name}"...`);

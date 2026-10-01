@@ -24,9 +24,9 @@ const TECH = [
   ['Agentic AI', 'agentic'], ['Generative AI', 'gen\\s?ai', 'generative ai', '\\bllm'],
 ].map(([name, ...src]) => [name, new RegExp(`(?<![a-z0-9])(?:${src.join('|')})(?![a-z0-9+#])`, 'i')]);
 
-const HIRING = /\bhiring\b|we are looking|we're looking|looking for (?:an? )?(?:experienced |skilled |talented )?[\w.#+ /-]{0,40}(?:developer|engineer)|job opening|opening for|vacanc|urgent(?:ly)? (?:requirement|hiring)|walk[\s-]?in|share (?:your )?(?:cv|resume)|send (?:your )?(?:cv|resume)|position\s*:|role\s*:|job title\s*:|requirement for/i;
-const SEEKER = /\bi am looking for\b|\bi'm looking for\b|looking for (?:a )?(?:job|opportunit|change)|open to work|#opentowork|my resume|immediate joiner looking/i;
-const ROLE_WORD = /(developer|engineer|architect|programmer|designer|intern|lead|tester|analyst|consultant|specialist|administrator|devops|sde\b)/i;
+const HIRING = /\bhiring\b|we are looking|we're looking|looking for (?:an? )?(?:experienced |skilled |talented )?[\w.#+ /-]{0,40}(?:developer|engineer)|job opening|opening for|vacanc|urgent(?:ly)? (?:requirement|hiring)|walk[\s-]?in|share (?:your )?(?:cv|resume)|send (?:your )?(?:cv|resume)|position\s*:|role\s*:|job title\s*:|requirement for|\bneed(?:ed)?\b[^.\n]{0,40}\b(?:developer|dev|engineer)\b|\b(?:developer|dev|engineer)s?\b[^.\n]{0,20}\b(?:required|needed|wanted)\b/i;
+const SEEKER = /\bi need (?:a )?job\b|\bneed (?:a )?job\b|\bi am looking for\b|\bi'm looking for\b|looking for (?:a )?(?:job|opportunit|change)|open to work|#opentowork|my resume|immediate joiner looking/i;
+const ROLE_WORD = /(developer|engineer|architect|programmer|designer|intern|lead|tester|analyst|consultant|specialist|administrator|devops|sde\b|\bdev\b)/i;
 
 const clean = (s) => String(s || '')
   .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, ' ') // emojis
@@ -38,7 +38,8 @@ function findTitle(lines) {
   const labelled = lines.map((l) => l.match(/^(?:job\s*title|position|role|designation|opening)\s*[:\-–]\s*(.+)$/i)).find(Boolean);
   let t = labelled ? labelled[1] : lines.find((l) => ROLE_WORD.test(l));
   if (!t) return null;
-  t = t.replace(/^.*?\b(?:hiring|opening|looking for|vacancy)\b\s*(?:for|an?|:|\||-|–)*\s*/i, '') // "We're Hiring: X" -> "X"
+  t = t.replace(/^.*?\b(?:hiring|opening|looking for|vacancy)\b(?:\s*(?:for\b|an?\b|:|\||-|–))*\s*/i, '')
+    .replace(/^(?:urgent(?:ly)?\s+)?(?:need(?:ed)?|required|wanted)\b\s*(?:an?\b)?\s*/i, '') // "We're Hiring: X" -> "X"
     .replace(/^(?:an?|the)\s+/i, '')
     .split(/\s[|–—]\s|\s-\s|\s@\s|\(|📍/)[0]
     .replace(/[:.!,\s-]+$/, '')
@@ -68,7 +69,7 @@ function field(lines, names) {
 /** @returns {object|null} job in the same shape the AI extractor returns, or null if not a hiring post */
 function parseJobPost(raw) {
   const text = String(raw || '');
-  if (text.length < 40 || SEEKER.test(text) || !HIRING.test(text)) return null;
+  if (text.length < 15 || SEEKER.test(text) || !HIRING.test(text)) return null;
   const lines = text.split(/\r?\n/).map(clean).filter(Boolean);
   const flat = clean(text);
 
