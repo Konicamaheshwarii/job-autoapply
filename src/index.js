@@ -107,6 +107,7 @@ async function handle(msg) {
     }
   }
   if (mediaKey) markSeen(mediaKey);
+  if (msg.hasMedia && !image && !text.trim()) return; // image we couldn't download and no caption: nothing to read
 
   // Skip "ok", "thanks", "interested"... but never a short post that mentions the role.
   const mentionsRole = whatsapp.roleKeywords.some((k) => text.toLowerCase().includes(k));
