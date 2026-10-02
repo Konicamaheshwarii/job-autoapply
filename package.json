@@ -2,6 +2,7 @@
   "name": "job-autoapply",
   "version": "1.0.0",
   "private": true,
+  "license": "MIT",
   "description": "Watches a WhatsApp job group, scores posts against your CV, tailors an ATS-friendly CV and applies by Gmail or WhatsApp.",
   "main": "src/index.js",
   "scripts": {
