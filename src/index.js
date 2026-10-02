@@ -276,6 +276,15 @@ setInterval(async () => {
   }
 }, 10 * 60 * 1000);
 
+// Safety net 4: logged in but WhatsApp Web never finishes loading -> restart. (Not while waiting for a QR scan.)
+let authenticatedAt = 0;
+client.on('authenticated', () => { authenticatedAt = Date.now(); });
+setInterval(() => {
+  if (started || !authenticatedAt || Date.now() - authenticatedAt < 5 * 60 * 1000) return;
+  log('WhatsApp logged in but never finished loading. Restarting...');
+  setTimeout(() => process.exit(2), 2000);
+}, 60 * 1000);
+
 async function shutdown() {
   log('Shutting down...');
   await closePdf().catch(() => {});

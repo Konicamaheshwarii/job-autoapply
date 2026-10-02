@@ -27,6 +27,8 @@ async function processPost(post, io = {}) {
   const notify = io.notify || (async () => {});
   const cv = masterCv();
   const cvText = cvToText(cv);
+  // Posts written in "bold" Unicode letters (𝗛𝗶𝗿𝗶𝗻𝗴) -> plain letters, so rules and keywords can read them.
+  post = { ...post, text: String(post.text || '').normalize('NFKC') };
 
   const lower = String(post.text || '').toLowerCase();
   if (!post.image && !whatsapp.roleKeywords.some((k) => lower.includes(k))) {
@@ -43,7 +45,10 @@ async function processPost(post, io = {}) {
     log(`  reading ${post.image ? 'image poster' : 'post'} with AI...`);
     jobs = await extractJobs(post.text, post.image);
   }
-  if (!jobs.length) return [];
+  if (!jobs.length) {
+    log('  no job found in post, skipped');
+    return [];
+  }
   log(`Job post: ${jobs.map((j) => j.title).join(' / ')}${parsed ? ' (read without AI)' : ''}`);
 
   const results = [];
