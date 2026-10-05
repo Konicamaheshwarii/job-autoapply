@@ -22,6 +22,15 @@ function wantsModernAngular(job) {
 
 const listJoin =(a) => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 
+// Offer an in-person interview only when the job is in the candidate's own city.
+// Remote jobs, jobs in other cities and jobs with no location get phone/video only.
+function interviewOffer(cv, job) {
+  const home = String(cv.location || '').split(',')[0].trim().toLowerCase();
+  const where = String(job.location || '').toLowerCase();
+  const local = home && where.includes(home) && job.work_mode !== 'remote';
+  return local ? 'a call or an in-person interview' : 'a phone or video interview';
+}
+
 function ruleTailor(cv, job) {
   const kw = job.keywords || [];
   const cvSkills = [...Object.values(cv.skills).flat(), ...(cv.extraKnownSkills || [])];
@@ -62,13 +71,6 @@ function ruleTailor(cv, job) {
   const role = job.title || 'the open';
   const strengths = top.length ? listJoin(top.slice(0, 4)) : 'Angular, TypeScript and REST API integration';
   const years = `${Math.floor(cv.totalExperienceYears)}+`;
-  // "Built and optimized CI/CD..." -> "built and optimized CI/CD..."
-  const lower1 = (s) => s.charAt(0).toLowerCase() + s.slice(1).replace(/\.$/, '');
-  const doneList = exp[0].bullets.slice(0, 3).map((b) => `- I ${lower1(b)}.`).join('\n');
-  const [p1, p2] = projects;
-  const projectLine = [p1, p2].filter(Boolean)
-    .map((p) => `${p.name}, where I ${lower1(p.bullets[0]).replace(new RegExp(`^(developed(?: and (?:maintained|implemented))?) ${p.name},? `, 'i'), '$1 ')}`)
-    .join('; and ');
 
   return {
     fitScore: null,
@@ -80,17 +82,12 @@ function ruleTailor(cv, job) {
     emailBody:
 `Dear Hiring Team,
 
-I am writing to apply for the ${role} position${at}. I am an ${cv.title} with ${years} years of experience, currently working at ${cv.experience[0].company}, where I build and maintain scalable, user-focused web applications using ${strengths}.
+I would like to apply for the ${role} position${at}. I am an ${cv.title} with ${years} years of experience, currently at ${cv.experience[0].company}, working with ${strengths}.
 
-In my current role, the work most relevant to this position includes:
-${doneList}
-
-I have also worked on ${projectLine}. These projects gave me hands-on experience taking features from requirement to production and working closely with clients and team members.
-
-I have attached my CV for your review. I would welcome the opportunity to discuss how my experience can contribute to your team, and I am available for a call or interview at your convenience.`,
+My CV is attached. I am available for ${interviewOffer(cv, job)} at your convenience.`,
     whatsappMessage:
 `Hello, I'm ${cv.name}, an ${cv.title} with ${years} years of experience (${strengths}). I'd like to apply for the ${role} role${at}. Please find my CV attached. Thank you!`,
   };
 }
 
-module.exports = { ruleTailor, wantsModernAngular };
+module.exports = { ruleTailor, wantsModernAngular, interviewOffer };
