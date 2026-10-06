@@ -148,6 +148,7 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
       await io.sendWhatsApp(job.apply_whatsapp, t.whatsappMessage, pdfPath, pdfName);
     }
   } catch (e) {
+    if (e.network) throw e; // no internet: the post is re-checked by the next re-scan instead of being lost
     await notify(`❌ Failed to apply to ${job.title} @ ${job.company || '?'}: ${e.message}`);
     return { ...result, status: 'error', reason: e.message };
   }

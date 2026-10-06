@@ -50,6 +50,8 @@ module.exports = {
     backfillLimit: num(process.env.BACKFILL_LIMIT, 500),
     // How many days of old posts to check on start: 1 = today, 2 = today + yesterday, ...
     backfillDays: Math.max(1, num(process.env.BACKFILL_DAYS, 1)),
+    // Windows: don't let the PC fall asleep when idle while the bot runs
+    keepAwake: bool(process.env.KEEP_AWAKE, true),
   },
   gmail: {
     user: process.env.GMAIL_USER || '',

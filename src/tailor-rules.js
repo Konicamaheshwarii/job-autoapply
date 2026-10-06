@@ -28,7 +28,7 @@ function interviewOffer(cv, job) {
   const home = String(cv.location || '').split(',')[0].trim().toLowerCase();
   const where = String(job.location || '').toLowerCase();
   const local = home && where.includes(home) && job.work_mode !== 'remote';
-  return local ? 'a call or an in-person interview' : 'a phone or video interview';
+  return local ? 'a call or in-person interview' : 'a call or video interview';
 }
 
 function ruleTailor(cv, job) {
@@ -82,9 +82,7 @@ function ruleTailor(cv, job) {
     emailBody:
 `Dear Hiring Team,
 
-I would like to apply for the ${role} position${at}. I am an ${cv.title} with ${years} years of experience, currently at ${cv.experience[0].company}, working with ${strengths}.
-
-My CV is attached. I am available for ${interviewOffer(cv, job)} at your convenience.`,
+I would like to apply for the ${role} position${at}. I have ${years} years of experience in ${strengths}. My CV is attached, and I am available for ${interviewOffer(cv, job)}.`,
     whatsappMessage:
 `Hello, I'm ${cv.name}, an ${cv.title} with ${years} years of experience (${strengths}). I'd like to apply for the ${role} role${at}. Please find my CV attached. Thank you!`,
   };

@@ -40,6 +40,36 @@ function unmarkSeen(text) {
   save();
 }
 
+// Posts that are marked seen but not finished yet. If the bot restarts or crashes mid-way (e.g. while
+// waiting to send), they stay here and are un-marked on the next start, so the backfill picks them up again.
+state.pending ??= {};
+const MAX_TRIES = 3;
+
+function startWork(keys) {
+  for (const k of keys) state.pending[hash(k)] = (state.pending[hash(k)] || 0) + 1;
+  save();
+}
+
+function endWork(keys) {
+  for (const k of keys) delete state.pending[hash(k)];
+  save();
+}
+
+/** Call once on start. Returns how many unfinished posts will be checked again. */
+function retryUnfinished() {
+  let n = 0;
+  for (const [h, tries] of Object.entries(state.pending)) {
+    if (tries >= MAX_TRIES) {
+      delete state.pending[h]; // keeps failing: give up on it
+    } else {
+      delete state.seen[h];
+      n++;
+    }
+  }
+  save();
+  return n;
+}
+
 function contactKey(job) {
   return job.apply_email || job.apply_whatsapp || hash(`${job.company}|${job.title}`);
 }
@@ -73,4 +103,11 @@ function logRow(row) {
   fs.appendFileSync(paths.log, [new Date().toISOString(), ...cols.map((c) => row[c])].map(csvCell).join(',') + '\n');
 }
 
-module.exports = { markSeen, unmarkSeen, isSeen, alreadyApplied, appliedToday, recordApplication, logRow };
+/** Remembers the last time the bot was running, so the next start can catch up on everything posted while the PC was off. */
+function touchActive() {
+  state.lastActive = Date.now();
+  save();
+}
+const lastActive = () => state.lastActive || 0;
+
+module.exports = { touchActive, lastActive, markSeen, unmarkSeen, isSeen, startWork, endWork, retryUnfinished, alreadyApplied, appliedToday, recordApplication, logRow };
