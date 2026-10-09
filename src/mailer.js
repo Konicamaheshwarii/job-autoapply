@@ -43,4 +43,9 @@ async function verifyMailer() {
   await getTransporter().verify();
 }
 
-module.exports = { sendApplication, verifyMailer, signature };
+// Plain alert to yourself (e.g. WhatsApp needs a QR re-scan), because WhatsApp itself can't be used to tell you that.
+async function alertSelf(subject, text) {
+  await getTransporter().sendMail({ from: gmail.user, to: gmail.user, subject, text });
+}
+
+module.exports = { sendApplication, verifyMailer, signature, alertSelf };

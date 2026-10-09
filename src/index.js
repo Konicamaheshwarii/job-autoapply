@@ -5,7 +5,7 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const { ROOT, whatsapp, rules, gmail, ai } = require('./config');
 const { processPost } = require('./pipeline');
 const { markSeen, unmarkSeen, isSeen, touchActive, lastActive, startWork, endWork, retryUnfinished } = require('./store');
-const { verifyMailer } = require('./mailer');
+const { verifyMailer, alertSelf } = require('./mailer');
 const { closePdf } = require('./pdf');
 
 // Show output in the window and also keep it in data/bot.log.
@@ -161,7 +161,14 @@ function restartIfBroken(e) {
   return false;
 }
 
+// A QR means the WhatsApp login was lost: nothing is received until it is scanned, so tell the user by email.
+let qrAlertedAt = 0;
 client.on('qr', (qr) => {
+  if (gmail.user && Date.now() - qrAlertedAt > 60 * 60 * 1000) {
+    qrAlertedAt = Date.now();
+    alertSelf('Job bot: scan the WhatsApp QR code', 'WhatsApp logged the job bot out, so it is not receiving any job posts. Open the job-bot window and scan the QR (WhatsApp > Linked devices > Link a device). Posts from the time it was off are checked automatically afterwards.')
+      .catch((e) => log('QR alert email failed:', e.message));
+  }
   console.log('\nScan this QR with WhatsApp > Linked devices > Link a device:\n');
   qrcode.generate(qr, { small: true });
 });
@@ -181,11 +188,15 @@ client.on('ready', async () => {
   started = true;
   log('WhatsApp ready - listening for new messages. Checking group list (can take a minute)...');
   let groups = [];
-  try {
-    groups = (await withTimeout(client.getChats(), 90000, 'Loading chat list')).filter((c) => c.isGroup);
-    for (const g of groups) groupNames.set(g.id._serialized, g.name || '');
-  } catch (e) {
-    log(`${e.message || e}. Not a problem: the bot still listens and checks each new message's group.`);
+  // The chat list is slow right after a login; try a few times, because the catch-up of missed posts needs it.
+  for (let attempt = 1; attempt <= 3 && !groups.length; attempt++) {
+    try {
+      groups = (await withTimeout(client.getChats(), 90000, 'Loading chat list')).filter((c) => c.isGroup);
+      for (const g of groups) groupNames.set(g.id._serialized, g.name || '');
+    } catch (e) {
+      log(`${e.message || e} (try ${attempt}/3). The bot still listens and checks each new message's group.`);
+      if (restartIfBroken(e)) return;
+    }
   }
   const watched = groups.filter((g) => isWatched(g.name));
   if (!groups.length) {
@@ -288,7 +299,19 @@ setInterval(touchActive, 60 * 1000);
 setInterval(() => log(`alive - ${received} group message(s) received so far`), 15 * 60 * 1000);
 
 // Safety net 1: re-scan the group every 20 min, in case WhatsApp stopped delivering live messages.
-setInterval(() => {
+setInterval(async () => {
+  if (!watchedChats.length && started) {
+    // The chat list never loaded at start; without it nothing can be caught up, so keep trying.
+    try {
+      const groups = (await withTimeout(client.getChats(), 90000, 'Loading chat list')).filter((c) => c.isGroup);
+      for (const g of groups) groupNames.set(g.id._serialized, g.name || '');
+      watchedChats = groups.filter((g) => isWatched(g.name));
+      if (watchedChats.length) log('Chat list loaded now. Watching: ' + watchedChats.map((g) => g.name).join(', '));
+    } catch (e) {
+      log(`Chat list still not available: ${e.message}`);
+      restartIfBroken(e);
+    }
+  }
   if (watchedChats.length) backfillToday(watchedChats, { quiet: true }).catch((e) => log('re-scan failed:', e.message));
 }, 20 * 60 * 1000);
 
