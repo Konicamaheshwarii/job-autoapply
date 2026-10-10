@@ -428,9 +428,10 @@ if (linkedin.enabled) {
   require('./linkedin').startLinkedIn({
     log,
     onPost: (post) => enqueue(post, () => handleLinkedIn(post)),
+    onLoginNeeded: () => notify('🔑 LinkedIn needs a login: a Chrome window opened on your PC. Log in there (it closes by itself).'),
     onBlocked: async (why) => {
-      await notify(`⚠️ LinkedIn reader paused for 6 hours: ${why}. Run: npm run linkedin-login`);
-      if (gmail.user) await alertSelf('Job bot: LinkedIn needs a login', `LinkedIn reading paused for 6 hours (${why}). Run 'npm run linkedin-login' and log in again.`);
+      await notify(`⚠️ LinkedIn reader paused for 6 hours: ${why}. You didn't finish logging in. It tries again automatically later.`);
+      if (gmail.user) await alertSelf('Job bot: LinkedIn needs a login', `LinkedIn reading paused for 6 hours (${why}). It will open the login window again by itself in a few hours.`);
     },
   });
 }

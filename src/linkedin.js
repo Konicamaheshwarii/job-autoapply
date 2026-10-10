@@ -32,13 +32,24 @@ function readPosts() {
   });
 }
 
-/** Opens a visible Chrome so the user can log in to LinkedIn once; the session is kept in PROFILE_DIR. */
-async function login() {
+/**
+ * Opens a visible Chrome so the user can log in to LinkedIn; the session is kept in PROFILE_DIR.
+ * Closes by itself once the feed is reached. Returns true if the login worked within waitMin minutes.
+ */
+async function login({ waitMin = 15 } = {}) {
   const browser = await puppeteer.launch({ headless: false, userDataDir: PROFILE_DIR, defaultViewport: null, args: ['--no-sandbox'] });
-  const page = (await browser.pages())[0] || await browser.newPage();
-  await page.goto('https://www.linkedin.com/login', { waitUntil: 'domcontentloaded' });
-  console.log('Log in to LinkedIn in the window that opened. Close the window when you see your feed.');
-  await new Promise((r) => browser.on('disconnected', r));
+  let ok = false;
+  try {
+    const page = (await browser.pages())[0] || await browser.newPage();
+    await page.goto('https://www.linkedin.com/login', { waitUntil: 'domcontentloaded' });
+    for (const end = Date.now() + waitMin * 60000; Date.now() < end && browser.connected;) {
+      await sleep(3000);
+      const url = page.url();
+      if (/linkedin\.com\/(feed|mynetwork|jobs|in\/|notifications)/.test(url)) { ok = true; await sleep(4000); break; }
+    }
+  } catch {}
+  await browser.close().catch(() => {});
+  return ok;
 }
 
 /** One pass over the configured searches. Returns the posts found: [{text, image?}] */
@@ -90,25 +101,32 @@ async function collectPosts({ log }) {
  * Runs forever: every ~linkedin.intervalMin minutes, during working hours only, reads new posts and calls
  * onPost(post) for each. After a login/captcha page it stays off for 6 hours and calls onBlocked(message).
  */
-function startLinkedIn({ onPost, onBlocked, log }) {
+function startLinkedIn({ onPost, onBlocked, onLoginNeeded, log }) {
   let pausedUntil = 0;
-  let loggedBlock = false;
   async function cycle() {
+    let next = linkedin.intervalMin * 60000 * rand(0.8, 1.25);
     const hour = new Date().getHours();
     if (Date.now() >= pausedUntil && hour >= linkedin.fromHour && hour < linkedin.toHour) {
       try {
         const posts = await collectPosts({ log });
-        loggedBlock = false;
         for (const p of posts) await onPost(p);
       } catch (e) {
         log(`LinkedIn: ${e.message}`);
         if (e.blocked) {
-          pausedUntil = Date.now() + 6 * 3600 * 1000;
-          if (!loggedBlock) { loggedBlock = true; await onBlocked(e.message).catch(() => {}); }
+          // Not logged in (first start, or LinkedIn logged us out): open a login window and wait for the user.
+          await onLoginNeeded().catch(() => {});
+          log('LinkedIn: opened a login window, waiting up to 15 min for you to log in...');
+          if (await login()) {
+            log('LinkedIn: login done.');
+            next = 60 * 1000;
+          } else {
+            pausedUntil = Date.now() + 6 * 3600 * 1000;
+            await onBlocked(e.message).catch(() => {});
+          }
         }
       }
     }
-    setTimeout(cycle, linkedin.intervalMin * 60000 * rand(0.8, 1.25));
+    setTimeout(cycle, next);
   }
   setTimeout(cycle, 60 * 1000);
   log(`LinkedIn reader on: ${linkedin.searches.length} search(es) every ~${linkedin.intervalMin} min, ${linkedin.fromHour}:00-${linkedin.toHour}:00`);
