@@ -53,6 +53,16 @@ module.exports = {
     // Windows: don't let the PC fall asleep when idle while the bot runs
     keepAwake: bool(process.env.KEEP_AWAKE, true),
   },
+  // Read-only LinkedIn post search (needs a one-time `npm run linkedin-login`)
+  linkedin: {
+    enabled: bool(process.env.LINKEDIN_ENABLED, false),
+    searches: (process.env.LINKEDIN_SEARCHES || 'hiring angular developer|angular developer send resume email').split('|').map((s) => s.trim()).filter(Boolean),
+    intervalMin: num(process.env.LINKEDIN_INTERVAL_MIN, 90),
+    fromHour: num(process.env.LINKEDIN_FROM_HOUR, 9),
+    toHour: num(process.env.LINKEDIN_TO_HOUR, 20),
+    maxPostsPerSearch: num(process.env.LINKEDIN_MAX_POSTS, 25),
+    maxImagesPerRun: num(process.env.LINKEDIN_MAX_IMAGES, 5),
+  },
   gmail: {
     user: process.env.GMAIL_USER || '',
     appPassword: (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),

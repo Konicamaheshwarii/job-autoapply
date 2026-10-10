@@ -2,7 +2,7 @@
 const path = require('path');
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
-const { ROOT, whatsapp, rules, gmail, ai } = require('./config');
+const { ROOT, whatsapp, rules, gmail, ai, linkedin } = require('./config');
 const { processPost } = require('./pipeline');
 const { markSeen, unmarkSeen, isSeen, touchActive, lastActive, startWork, endWork, retryUnfinished } = require('./store');
 const { verifyMailer, alertSelf } = require('./mailer');
@@ -228,8 +228,8 @@ let quotaWarnedOn = null;
 // so it is checked again after the restart.
 const POST_TIMEOUT_MS = 15 * 60 * 1000;
 
-function enqueue(msg) {
-  queue = queue.then(() => withTimeout(handle(msg), POST_TIMEOUT_MS, 'Handling a post')).catch((e) => {
+function enqueue(msg, task = () => handle(msg)) {
+  queue = queue.then(() => withTimeout(task(), POST_TIMEOUT_MS, 'Handling a post')).catch((e) => {
     log('Error handling message:', e.message);
     if (/^Handling a post timed out/.test(e.message)) {
       log('The bot got stuck on one post. Restarting...');
@@ -400,6 +400,39 @@ function keepAwake() {
   try {
     require('child_process').spawn('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', ps], { stdio: 'ignore', windowsHide: true }).unref();
   } catch {}
+}
+
+// A post read from LinkedIn goes through the same queue and pipeline as a WhatsApp post. It has no WhatsApp
+// sender, so jobs that only list a phone number or a link are sent to you to apply manually.
+async function handleLinkedIn(post) {
+  const text = post.text || '';
+  const mentionsRole = whatsapp.roleKeywords.some((k) => text.toLowerCase().includes(k));
+  if (!post.image && !mentionsRole) return;
+  const seenKey = text + (post.image ? post.image.data.slice(0, 5000) : '');
+  if (!markSeen(seenKey)) return;
+  log(`New LinkedIn post (${post.source}): ${text.slice(0, 80).replace(/\s+/g, ' ')}${post.image ? ' [image]' : ''}`);
+  startWork([seenKey]);
+  busy = true;
+  try {
+    await processPost({ text, image: post.image }, { notify, log });
+  } catch (e) {
+    unmarkSeen(seenKey);
+    throw e;
+  } finally {
+    busy = false;
+    endWork([seenKey]);
+  }
+}
+
+if (linkedin.enabled) {
+  require('./linkedin').startLinkedIn({
+    log,
+    onPost: (post) => enqueue(post, () => handleLinkedIn(post)),
+    onBlocked: async (why) => {
+      await notify(`⚠️ LinkedIn reader paused for 6 hours: ${why}. Run: npm run linkedin-login`);
+      if (gmail.user) await alertSelf('Job bot: LinkedIn needs a login', `LinkedIn reading paused for 6 hours (${why}). Run 'npm run linkedin-login' and log in again.`);
+    },
+  });
 }
 
 killLeftoverChrome();

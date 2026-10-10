@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node src/index.js",
     "try": "node src/try-job.js",
+    "linkedin-login": "node scripts/linkedin-login.js",
     "postinstall": "node scripts/apply-patches.js"
   },
   "dependencies": {
