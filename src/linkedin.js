@@ -7,7 +7,10 @@ const puppeteer = require('puppeteer');
 const { ROOT, linkedin } = require('./config');
 
 const PROFILE_DIR = path.join(ROOT, 'data', 'linkedin-profile');
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+// Login and reading must look identical to LinkedIn (same real, visible Chrome; reading just keeps it off-screen),
+// otherwise it ends the session. No fake user agent, no headless.
+const LAUNCH = { userDataDir: PROFILE_DIR, ignoreDefaultArgs: ['--enable-automation'] };
+const ARGS = ['--no-sandbox', '--disable-blink-features=AutomationControlled'];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rand = (a, b) => a + Math.random() * (b - a);
 const BLOCKED = /\/checkpoint|\/authwall|\/uas\/|\/login|captcha|challenge/i;
@@ -17,13 +20,17 @@ const searchUrl = (q) => 'https://www.linkedin.com/search/results/content/?keywo
 
 // Runs inside the page: returns one entry per post with its text and the index of its poster image.
 function readPosts() {
-  const sel = 'div[data-urn^="urn:li:activity"], div.feed-shared-update-v2, li.reusable-search__result-container';
-  const all = [...document.querySelectorAll(sel)];
+  const sel = 'div[role="listitem"], div[data-urn^="urn:li:activity"], div.feed-shared-update-v2, li.reusable-search__result-container';
+  const all = [...document.querySelectorAll(sel)].filter((el) => el.innerText.length > 80);
   const posts = all.filter((el) => !all.some((o) => o !== el && el.contains(o)));
   return posts.map((el, i) => {
     el.querySelectorAll('button').forEach((b) => { if (/(…|\.\.\.)\s*more$|see more/i.test(b.innerText.trim())) b.click(); });
     const textEl = el.querySelector('.update-components-text, .feed-shared-text, .break-words') || el;
-    const text = textEl.innerText.replace(/\n{3,}/g, '\n\n').trim();
+    let text = textEl.innerText.replace(/\n{3,}/g, '\n\n').trim();
+    // Drop the author header ("Feed post / name / headline / 2m / Follow") so the job text comes first.
+    const lines = text.split('\n');
+    const at = lines.slice(0, 14).findIndex((l) => /^(Follow|Connect|Following)$/.test(l.trim()));
+    if (at >= 0) text = lines.slice(at + 1).join('\n').trim();
     const img = [...el.querySelectorAll('img')].find((im) => im.naturalWidth >= 400 && im.naturalHeight >= 300
       && !/profile|avatar|logo|ghost/i.test(`${im.className} ${im.alt} ${im.src}`));
     if (img) img.setAttribute('data-bot-poster', String(i));
@@ -37,7 +44,7 @@ function readPosts() {
  * Closes by itself once the feed is reached. Returns true if the login worked within waitMin minutes.
  */
 async function login({ waitMin = 15 } = {}) {
-  const browser = await puppeteer.launch({ headless: false, userDataDir: PROFILE_DIR, defaultViewport: null, args: ['--no-sandbox'] });
+  const browser = await puppeteer.launch({ ...LAUNCH, headless: false, defaultViewport: null, args: ARGS });
   let ok = false;
   try {
     const page = (await browser.pages())[0] || await browser.newPage();
@@ -54,11 +61,10 @@ async function login({ waitMin = 15 } = {}) {
 
 /** One pass over the configured searches. Returns the posts found: [{text, image?}] */
 async function collectPosts({ log }) {
-  const browser = await puppeteer.launch({ headless: true, userDataDir: PROFILE_DIR, args: ['--no-sandbox'] });
+  const browser = await puppeteer.launch({ ...LAUNCH, headless: false, args: [...ARGS, '--window-position=-2400,0', '--window-size=1280,1000'] });
   const found = [];
   try {
     const page = (await browser.pages())[0] || await browser.newPage();
-    await page.setUserAgent(USER_AGENT);
     await page.setViewport({ width: 1280, height: 1000 });
     let images = 0;
     for (const q of linkedin.searches) {
@@ -69,7 +75,7 @@ async function collectPosts({ log }) {
         e.blocked = true;
         throw e;
       }
-      for (let s = 0; s < 3; s++) {
+      for (let s = 0; s < 6; s++) {
         await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.9));
         await sleep(rand(2500, 5000));
       }
