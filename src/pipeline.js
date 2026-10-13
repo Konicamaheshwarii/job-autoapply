@@ -57,7 +57,7 @@ async function processPost(post, io = {}) {
     results.push(r);
     store.logRow(r);
     log(`  [${r.status}] ${job.title} @ ${job.company || '?'} score=${r.score ?? '-'} ${r.reason ? `(${r.reason})` : ''}`);
-    if (r.status === 'skipped' && whatsapp.notifySkipped) {
+    if (r.status === 'skipped' && whatsapp.notifySkipped && !io.quietSkips) {
       await notify(`⏭ Skipped: ${job.title} @ ${job.company || '?'}${r.score != null ? ` (${r.score}/100)` : ''}
 ${String(r.reason).slice(0, 160)}`);
     }

@@ -414,7 +414,7 @@ async function handleLinkedIn(post) {
   startWork([seenKey]);
   busy = true;
   try {
-    await processPost({ text, image: post.image }, { notify, log });
+    await processPost({ text, image: post.image }, { notify, log, quietSkips: true }); // LinkedIn lists are long: only tell me about jobs worth applying to
   } catch (e) {
     unmarkSeen(seenKey);
     throw e;
@@ -422,6 +422,15 @@ async function handleLinkedIn(post) {
     busy = false;
     endWork([seenKey]);
   }
+}
+
+if (linkedin.alerts) {
+  require('./alerts').startAlerts({
+    log,
+    isDone: isSeen,
+    markDone: markSeen,
+    onPost: (post) => enqueue(post, () => handleLinkedIn(post)),
+  });
 }
 
 if (linkedin.enabled) {

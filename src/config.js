@@ -61,6 +61,9 @@ module.exports = {
     fromHour: num(process.env.LINKEDIN_FROM_HOUR, 9),
     toHour: num(process.env.LINKEDIN_TO_HOUR, 20),
     maxPostsPerSearch: num(process.env.LINKEDIN_MAX_POSTS, 25),
+    // Read LinkedIn job-alert emails from Gmail (no LinkedIn login needed)
+    alerts: bool(process.env.LINKEDIN_ALERTS, true),
+    alertsEveryMin: num(process.env.LINKEDIN_ALERTS_EVERY_MIN, 20),
     maxImagesPerRun: num(process.env.LINKEDIN_MAX_IMAGES, 5),
   },
   gmail: {

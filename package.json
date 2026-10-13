@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
+    "imapflow": "^2.4.0",
+    "mailparser": "^3.9.38",
     "nodemailer": "^7.0.10",
     "puppeteer": "24.38.0",
     "qrcode-terminal": "^0.12.0",
