@@ -9,7 +9,7 @@ const { ruleTailor } = require('./tailor-rules');
 const { parseJobPost } = require('./parse');
 const { ruleScore } = require('./match');
 const { renderPdf } = require('./pdf');
-const { sendApplication, signature } = require('./mailer');
+const { sendApplication, signature, domainCanReceive } = require('./mailer');
 const store = require('./store');
 
 const masterCv = () => JSON.parse(fs.readFileSync(paths.masterCv, 'utf8'));
@@ -135,6 +135,11 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
     store.recordApplication(job, true);
     await notify(`🧪 *DRY RUN* would apply via ${channel} to ${base.contact}\n${job.title} @ ${job.company || '?'}\nScore ${score}/100\n${atsLine}`);
     return { ...result, status: 'dry-run' };
+  }
+
+  if (channel === 'email' && !(await domainCanReceive(job.apply_email))) {
+    await notify(`❌ Not sent: ${job.apply_email} looks wrong (that domain does not exist) for ${job.title} @ ${job.company || '?'}. Check the post and apply by hand. CV: ${pdfPath}`);
+    return { ...result, status: 'error', reason: `email domain does not exist: ${job.apply_email}` };
   }
 
   const wait = randomDelayMs();

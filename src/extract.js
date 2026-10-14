@@ -32,10 +32,25 @@ async function extractJobs(text, image) {
     }));
 }
 
+// Posts often run the address into the next word ("hr@abc.comAlso send..."), so the match ends in a fake
+// domain ending ("abc.comalso"). Cut the last label back to a real ending.
+const TLDS = ['com', 'in', 'org', 'net', 'io', 'co', 'ai', 'dev', 'tech', 'info', 'biz', 'edu', 'gov', 'us', 'uk', 'ca', 'au', 'de', 'ae', 'sg', 'app',
+  'cloud', 'solutions', 'me', 'xyz', 'online', 'services', 'systems', 'global', 'digital', 'software', 'ltd', 'inc', 'nl', 'fr', 'es', 'it', 'pk', 'bd'];
+function fixDomain(domain) {
+  const labels = domain.toLowerCase().split('.');
+  const last = labels[labels.length - 1];
+  if (!TLDS.includes(last)) {
+    const t = TLDS.filter((x) => last.startsWith(x)).sort((x, y) => y.length - x.length)[0];
+    if (t) labels[labels.length - 1] = t;
+  }
+  return labels.join('.');
+}
+
 function validEmail(e) {
   if (!e) return null;
-  const m = String(e).trim().match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-  return m ? m[0].toLowerCase() : null;
+  const m = String(e).trim().match(/([A-Z0-9._%+-]+)@([A-Z0-9.-]+\.[A-Z]{2,})/i);
+  if (!m) return null;
+  return `${m[1].replace(/^\.+|\.+$/g, '')}@${fixDomain(m[2].replace(/\.+$/, ''))}`.toLowerCase();
 }
 
 // Indian numbers without a country code get 91 prepended.

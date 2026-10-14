@@ -48,4 +48,20 @@ async function alertSelf(subject, text) {
   await getTransporter().sendMail({ from: gmail.user, to: gmail.user, subject, text });
 }
 
-module.exports = { sendApplication, verifyMailer, signature, alertSelf };
+// A typo'd domain bounces back to the inbox and looks bad, so check that the domain can receive mail first.
+// Only a definite "no such domain" blocks the send; DNS trouble on our side does not.
+async function domainCanReceive(email) {
+  const dns = require('dns').promises;
+  const domain = String(email).split('@')[1];
+  if (!domain) return false;
+  try {
+    return (await dns.resolveMx(domain)).length > 0;
+  } catch (e) {
+    if (e.code === 'ENOTFOUND' || e.code === 'ENODATA') {
+      try { return (await dns.resolve4(domain)).length > 0; } catch (e2) { return !(e2.code === 'ENOTFOUND' || e2.code === 'ENODATA'); }
+    }
+    return true;
+  }
+}
+
+module.exports = { sendApplication, verifyMailer, signature, alertSelf, domainCanReceive };
