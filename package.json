@@ -9,6 +9,7 @@
     "start": "node src/index.js",
     "try": "node src/try-job.js",
     "linkedin-login": "node scripts/linkedin-login.js",
+    "telegram-login": "node scripts/telegram-login.js",
     "postinstall": "node scripts/apply-patches.js"
   },
   "dependencies": {
@@ -18,6 +19,7 @@
     "nodemailer": "^7.0.10",
     "puppeteer": "24.38.0",
     "qrcode-terminal": "^0.12.0",
+    "telegram": "^2.26.22",
     "whatsapp-web.js": "^1.34.7"
   }
 }

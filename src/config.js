@@ -66,6 +66,13 @@ module.exports = {
     alertsEveryMin: num(process.env.LINKEDIN_ALERTS_EVERY_MIN, 20),
     maxImagesPerRun: num(process.env.LINKEDIN_MAX_IMAGES, 5),
   },
+  // Telegram job channels you have joined (needs API id/hash from my.telegram.org and `npm run telegram-login`)
+  telegram: {
+    apiId: num(process.env.TELEGRAM_API_ID, 0),
+    apiHash: process.env.TELEGRAM_API_HASH || '',
+    // Channel/group names or @usernames, comma-separated, matched case-insensitively
+    channels: (process.env.TELEGRAM_CHANNELS || '').split(',').map((s) => s.trim().replace(/^@/, '').toLowerCase()).filter(Boolean),
+  },
   gmail: {
     user: process.env.GMAIL_USER || '',
     appPassword: (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),
