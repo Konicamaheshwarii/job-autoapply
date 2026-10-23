@@ -111,3 +111,7 @@ function touchActive() {
 const lastActive = () => state.lastActive || 0;
 
 module.exports = { touchActive, lastActive, markSeen, unmarkSeen, isSeen, startWork, endWork, retryUnfinished, alreadyApplied, appliedToday, recordApplication, logRow };
+
+/** Email addresses of every live (non dry-run) application, to recognise replies from those companies. */
+const appliedEmails = () => [...new Set(state.applied.filter((a) => !a.dryRun && String(a.key).includes('@')).map((a) => a.key))];
+module.exports.appliedEmails = appliedEmails;

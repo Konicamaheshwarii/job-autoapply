@@ -6,6 +6,7 @@ const { ROOT, whatsapp, rules, gmail, ai, linkedin } = require('./config');
 const { processPost } = require('./pipeline');
 const { markSeen, unmarkSeen, isSeen, touchActive, lastActive, startWork, endWork, retryUnfinished } = require('./store');
 const { verifyMailer, alertSelf } = require('./mailer');
+const { appliedEmails } = require('./store');
 const { closePdf } = require('./pdf');
 
 // Show output in the window and also keep it in data/bot.log.
@@ -422,6 +423,10 @@ async function handleLinkedIn(post) {
     busy = false;
     endWork([seenKey]);
   }
+}
+
+if (gmail.user && gmail.appPassword && !rules.dryRun) {
+  require('./replies').startReplyWatcher({ appliedEmails, isDone: isSeen, markDone: markSeen, notify, log });
 }
 
 if (linkedin.alerts) {
