@@ -409,7 +409,7 @@ async function handleLinkedIn(post) {
   const text = post.text || '';
   const mentionsRole = whatsapp.roleKeywords.some((k) => text.toLowerCase().includes(k));
   if (!post.image && !mentionsRole) return;
-  const seenKey = text + (post.image ? post.image.data.slice(0, 5000) : '');
+  const seenKey = post.key || text + (post.image ? post.image.data.slice(0, 5000) : '');
   if (!markSeen(seenKey)) return;
   log(`New LinkedIn post (${post.source}): ${text.slice(0, 80).replace(/\s+/g, ' ')}${post.image ? ' [image]' : ''}`);
   startWork([seenKey]);

@@ -3,6 +3,7 @@
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const { gmail, linkedin } = require('./config');
+const { PLATFORM_SENDERS, parseByPlatform } = require('./alert-sources');
 
 const TOO_SENIOR = /\b(?:lead|principal|architect|manager|head|director|staff|vp)\b/i;
 const NOISE = /view job|apply|ago|applicant|easy|promoted|actively|alumni|connection|see more|^\W*$/i;
@@ -29,7 +30,7 @@ function jobsFromHtml(html) {
 
 /** The text that is handed to the pipeline: looks like a normal hiring post, with the job link to apply. */
 function postText(j) {
-  return [`Hiring: ${j.title}`, j.company && `Company: ${j.company}`, j.location && `Location: ${j.location}`, `Apply: ${j.link}`, '(LinkedIn job alert)']
+  return [`Hiring: ${j.title}`, j.company && `Company: ${j.company}`, j.location && `Location: ${j.location}`, `Apply: ${j.link}`, `(${j.platform || 'LinkedIn'} job alert)`]
     .filter(Boolean).join('\n');
 }
 
@@ -41,12 +42,12 @@ async function fetchAlertMails(days = 1) {
   try {
     const lock = await client.getMailboxLock('INBOX', { readOnly: true });
     try {
-      const uids = await client.search({ from: 'linkedin.com', since: new Date(Date.now() - days * 86400000) }, { uid: true });
+      const uids = await client.search({ or: PLATFORM_SENDERS.map((from) => ({ from })), since: new Date(Date.now() - days * 86400000) }, { uid: true });
       for await (const msg of client.fetch(uids, { source: true, envelope: true }, { uid: true })) {
         const mail = await simpleParser(msg.source);
         const from = (mail.from && mail.from.text) || '';
-        if (!/job|alert/i.test(`${from} ${mail.subject}`)) continue;
-        mails.push({ id: mail.messageId || String(msg.uid), subject: mail.subject, html: mail.html || '' });
+        if (!/job|alert|match|invited|opportunit/i.test(`${from} ${mail.subject}`)) continue;
+        mails.push({ id: mail.messageId || String(msg.uid), from: from.toLowerCase(), subject: mail.subject || '', html: mail.html || '' });
       }
     } finally { lock.release(); }
   } finally { await client.logout().catch(() => {}); }
@@ -58,9 +59,12 @@ async function collectAlertJobs({ log, isDone, markDone }) {
   const out = [];
   for (const mail of await fetchAlertMails(1)) {
     if (isDone(`alertmail:${mail.id}`)) continue;
-    const jobs = jobsFromHtml(mail.html).filter((j) => !TOO_SENIOR.test(j.title));
-    log(`LinkedIn alert email "${(mail.subject || '').slice(0, 60)}": ${jobs.length} job(s)`);
-    for (const j of jobs) out.push({ text: postText(j), source: 'LinkedIn alert email' });
+    const other = parseByPlatform(mail);
+    const platform = other ? other.platform : 'LinkedIn';
+    const jobs = (other ? other.jobs : jobsFromHtml(mail.html)).filter((j) => !TOO_SENIOR.test(j.title)).map((j) => ({ ...j, platform }));
+    log(`${platform} alert email "${(mail.subject || '').slice(0, 60)}": ${jobs.length} job(s)`);
+    // The same job comes in many emails with different tracking links, so de-duplicate by title + company.
+    for (const j of jobs) out.push({ text: postText(j), source: `${platform} alert email`, key: `alertjob:${j.title}|${j.company || ''}`.toLowerCase() });
     markDone(`alertmail:${mail.id}`);
   }
   return out;
