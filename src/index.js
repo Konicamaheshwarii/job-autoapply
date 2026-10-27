@@ -219,6 +219,26 @@ client.on('ready', async () => {
   log(`AI: ${ai.model} | min score ${rules.minScore} | max ${rules.maxPerDay}/day | ${rules.dryRun ? 'DRY RUN (nothing is sent)' : 'LIVE'}`);
   watchedChats = watched;
   if (whatsapp.backfillToday && watched.length) setTimeout(() => backfillToday(watched), 2000);
+  // Right after a login WhatsApp often returns a chat list without the job group. Ask again every 2 min
+  // (up to 30 min) instead of waiting for the 20-min re-scan, then catch up on the missed posts.
+  if (!watched.length) {
+    let tries = 0;
+    const retry = setInterval(async () => {
+      if (watchedChats.length || ++tries > 15) return clearInterval(retry);
+      try {
+        const all = (await withTimeout(client.getChats(), 90000, 'Loading chat list')).filter((c) => c.isGroup);
+        for (const g of all) groupNames.set(g.id._serialized, g.name || '');
+        const found = all.filter((g) => isWatched(g.name));
+        if (!found.length) return;
+        clearInterval(retry);
+        watchedChats = found;
+        log('Chat list loaded now. Watching: ' + found.map((g) => g.name).join(', '));
+        if (whatsapp.backfillToday) backfillToday(found).catch((e) => log('catch-up failed:', e.message));
+      } catch (e) {
+        if (restartIfBroken(e)) clearInterval(retry);
+      }
+    }, 2 * 60 * 1000);
+  }
   await notify(`🤖 Job bot started (${rules.dryRun ? 'dry run' : 'LIVE'}). Watching: ${watched.map((g) => g.name).join(', ') || (groups.length ? 'nothing - check WHATSAPP_GROUPS' : whatsapp.groups.join(', '))}`);
 });
 
