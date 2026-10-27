@@ -73,6 +73,17 @@ module.exports = {
     // Channel/group names or @usernames, comma-separated, matched case-insensitively
     channels: (process.env.TELEGRAM_CHANNELS || '').split(',').map((s) => s.trim().replace(/^@/, '').toLowerCase()).filter(Boolean),
   },
+  // JSearch API on RapidAPI: jobs from LinkedIn, Indeed, Naukri, Glassdoor... via Google for Jobs (free key at rapidapi.com)
+  jsearch: {
+    key: process.env.JSEARCH_API_KEY || '',
+    // '|'-separated searches. Free plan is ~200 requests/month: 2 searches x 3 rounds a day fits.
+    queries: (process.env.JSEARCH_QUERIES || 'Angular developer in India|MEAN stack developer in India').split('|').map((s) => s.trim()).filter(Boolean),
+    everyHours: num(process.env.JSEARCH_EVERY_HOURS, 4),
+    fromHour: num(process.env.JSEARCH_FROM_HOUR, 9),
+    toHour: num(process.env.JSEARCH_TO_HOUR, 21),
+    datePosted: process.env.JSEARCH_DATE_POSTED || 'today',
+    country: process.env.JSEARCH_COUNTRY || 'in',
+  },
   gmail: {
     user: process.env.GMAIL_USER || '',
     appPassword: (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),

@@ -2,7 +2,7 @@
 const path = require('path');
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
-const { ROOT, whatsapp, rules, gmail, ai, linkedin, telegram } = require('./config');
+const { ROOT, whatsapp, rules, gmail, ai, linkedin, telegram, jsearch } = require('./config');
 const { processPost } = require('./pipeline');
 const { markSeen, unmarkSeen, isSeen, touchActive, lastActive, startWork, endWork, retryUnfinished } = require('./store');
 const { verifyMailer, alertSelf } = require('./mailer');
@@ -447,6 +447,10 @@ async function handleLinkedIn(post) {
 
 if (gmail.user && gmail.appPassword && !rules.dryRun) {
   require('./replies').startReplyWatcher({ appliedEmails, isDone: isSeen, markDone: markSeen, notify, log });
+}
+
+if (jsearch.key) {
+  require('./jsearch').startJSearch({ log, onPost: (post) => enqueue(post, () => handleLinkedIn(post)) });
 }
 
 if (telegram.apiId && telegram.channels.length) {
