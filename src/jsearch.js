@@ -7,7 +7,7 @@ const HOST = 'jsearch.p.rapidapi.com';
 const TOO_SENIOR = /\b(?:lead|principal|architect|manager|head|director|staff|vp)\b/i;
 
 async function search(query) {
-  const params = new URLSearchParams({ query, page: '1', num_pages: '1', date_posted: jsearch.datePosted, country: jsearch.country });
+  const params = new URLSearchParams({ query, num_pages: '1', date_posted: jsearch.datePosted, country: jsearch.country });
   const res = await fetch(`https://${HOST}/search?${params}`, {
     headers: { 'x-rapidapi-key': jsearch.key, 'x-rapidapi-host': HOST },
     signal: AbortSignal.timeout(30000),
