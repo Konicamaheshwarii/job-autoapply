@@ -70,7 +70,12 @@ function ruleTailor(cv, job) {
   const at = job.company ? ` at ${job.company}` : '';
   const role = job.title || 'the open';
   const strengths = top.length ? listJoin(top.slice(0, 4)) : 'Angular, TypeScript and REST API integration';
-  const years = `${Math.floor(cv.totalExperienceYears)}+`;
+  // Current job for the intro line ("MOBMAXIME" in the CV data reads better as "MobMaxime").
+  const job0 = cv.experience[0] || {};
+  const current = {
+    role: job0.role || cv.title,
+    company: /^[A-Z0-9 .&-]+$/.test(job0.company || '') ? job0.company.charAt(0) + job0.company.slice(1).toLowerCase().replace(/maxime/, 'Maxime') : job0.company || '',
+  };
 
   return {
     fitScore: null,
@@ -79,12 +84,23 @@ function ruleTailor(cv, job) {
     cv: { ...cv, title, summary, skills, experience: exp, projects },
     // Recruiters filter on the subject: role + years + name up front.
     emailSubject: `Application for ${role} | ${cv.totalExperienceYears} Yrs Exp | ${cv.name}`,
-    emailBody:
-`Dear Hiring Team,
-
-I would like to apply for the ${role} position${at}. I have ${years} years of experience in ${strengths}. My CV is attached, and I am available for ${interviewOffer(cv, job)}.`,
+    // Medium length: who I am, three short highlights (the last one matched to this job), how to see my work.
+    emailBody: [
+      'Dear Hiring Team,',
+      '',
+      `I am writing to apply for the ${role} position${at}. I am a ${current.role} at ${current.company} with ${cv.totalExperienceYears} years of experience building scalable web applications with ${strengths}.`,
+      '',
+      'A few highlights:',
+      `- Built and maintained production Angular apps such as ThriveHealth (healthcare staffing) and Sketchplay (sports tournaments), with REST API integration, server-side rendering and CI/CD.`,
+      `- I build AI-powered features: voice assistants and LLM apps such as RAG document chat and an AI interview coach, with live demos on my GitHub.`,
+      top.length
+        ? `- Hands-on with ${listJoin(top.slice(0, 5))}, which match what you are looking for.`
+        : '- Comfortable owning a feature end to end, from UI and APIs to testing and deployment.',
+      '',
+      `My CV is attached${cv.portfolio ? `, and you can see my projects at ${cv.portfolio}` : ''}. I am available for ${interviewOffer(cv, job)} at your convenience.`,
+    ].join('\n'),
     whatsappMessage:
-`Hello, I'm ${cv.name}, an ${cv.title} with ${years} years of experience (${strengths}). I'd like to apply for the ${role} role${at}. Please find my CV attached. Thank you!`,
+`Hello, I'm ${cv.name}, a ${current.role} with ${cv.totalExperienceYears} years of experience (${strengths}). I'd like to apply for the ${role} role${at}. My CV is attached${cv.portfolio ? ` and my work is at ${cv.portfolio}` : ''}. Thank you!`,
   };
 }
 

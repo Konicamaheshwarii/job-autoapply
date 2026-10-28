@@ -10,7 +10,12 @@ function getTransporter() {
 }
 
 function signature(cv) {
-  return `\n\nBest regards,\n${cv.name}\n${cv.phone}\n${cv.email}\n${cv.linkedin}`;
+  const links = [
+    cv.portfolio && `Portfolio: ${cv.portfolio}`,
+    cv.github && `GitHub: ${cv.github}`,
+    cv.linkedin && `LinkedIn: ${cv.linkedin}`,
+  ].filter(Boolean).join('\n');
+  return `\n\nBest regards,\n${cv.name}\n${cv.phone}\n${cv.email}\n${links}`;
 }
 
 const isNetworkError = (e) => /ENETUNREACH|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|EHOSTUNREACH|ESOCKET|Connection timeout/i.test(`${e && e.code} ${e && e.message}`);
