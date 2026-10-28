@@ -44,6 +44,29 @@ async function sendOnce({ to, subject, body, cv, pdfPath, pdfName }) {
   });
 }
 
+/**
+ * Any other email from the candidate (recruiter replies, follow-ups). With inReplyTo it stays in the same thread.
+ * Retries on network errors like sendApplication.
+ */
+async function sendEmail({ to, subject, body, cv, pdfPath, pdfName, inReplyTo }) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await getTransporter().sendMail({
+        from: `"${cv.name}" <${gmail.user}>`,
+        replyTo: cv.email,
+        to,
+        subject,
+        text: body + signature(cv),
+        ...(inReplyTo ? { inReplyTo, references: inReplyTo } : {}),
+        attachments: pdfPath ? [{ filename: pdfName || 'CV.pdf', path: pdfPath, contentType: 'application/pdf' }] : [],
+      });
+    } catch (e) {
+      if (!isNetworkError(e) || attempt === 3) throw e;
+      await new Promise((r) => setTimeout(r, attempt * 30000));
+    }
+  }
+}
+
 async function verifyMailer() {
   await getTransporter().verify();
 }
@@ -69,4 +92,4 @@ async function domainCanReceive(email) {
   }
 }
 
-module.exports = { sendApplication, verifyMailer, signature, alertSelf, domainCanReceive };
+module.exports = { sendApplication, sendEmail, verifyMailer, signature, alertSelf, domainCanReceive };

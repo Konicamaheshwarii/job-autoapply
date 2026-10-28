@@ -60,4 +60,28 @@ async function findCompanyEmail(website, log = () => {}) {
   return found;
 }
 
-module.exports = { findCompanyEmail, siteOf };
+// Job portals: their pages are never fetched (their rules forbid scraping), only company sites and ATS pages.
+const PORTALS = /(^|\.)(linkedin|naukri|indeed|foundit|monsterindia|monster|glassdoor|apna|shine|timesjobs|instahyre|cutshort|wellfound|hirist|iimjobs|bayt|jobrapido|ziprecruiter|simplyhired|jooble|careerjet|talent|google|bing|fitboard|freshersworld|workindia)\./i;
+const NOT_HIRING = /^(info|sales|support|privacy|no-?reply|donotreply|admin|webmaster|press|media|legal|security|abuse|marketing|contact|hello|billing|accounts?)\b/i;
+
+/**
+ * Looks for a recruiter / hiring email on the job's own page (company careers page or ATS such as Lever,
+ * Greenhouse, Workday). Accepts hiring-named addresses, or any non-generic address on the company's domain.
+ */
+async function findEmailOnJobPage(url, companyDomain = '') {
+  const site = siteOf(url || '');
+  if (!site || PORTALS.test(site.domain + '.')) return null;
+  let html = '';
+  try { html = await fetchText(url); } catch { return null; }
+  const emails = [...new Set((html.replace(/\s*\[at\]\s*|\s*\(at\)\s*/gi, '@').match(EMAIL) || []).map((e) => e.toLowerCase()))]
+    .filter((e) => !/\.(png|jpe?g|gif|svg|webp)$/i.test(e));
+  const companyOrPage = [companyDomain, site.domain].filter(Boolean);
+  return emails.find((e) => HIRING.test(e.split('@')[0]))
+    || emails.find((e) => {
+      const [local, dom] = e.split('@');
+      return !NOT_HIRING.test(local) && companyOrPage.some((d) => dom === d || dom.endsWith(`.${d}`));
+    })
+    || null;
+}
+
+module.exports = { findCompanyEmail, findEmailOnJobPage, siteOf };

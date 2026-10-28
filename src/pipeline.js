@@ -11,7 +11,7 @@ const { ruleScore } = require('./match');
 const { renderPdf } = require('./pdf');
 const { sendApplication, signature, domainCanReceive } = require('./mailer');
 const store = require('./store');
-const { findCompanyEmail } = require('./company-email');
+const { findCompanyEmail, findEmailOnJobPage, siteOf } = require('./company-email');
 
 const masterCv = () => JSON.parse(fs.readFileSync(paths.masterCv, 'utf8'));
 const slug = (s) => String(s || '').replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').slice(0, 40);
@@ -114,12 +114,20 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
     + `\nMissing from CV: ${after.missing.join(', ') || 'none'}`;
 
   // Only a portal link? Look for the company's own recruitment email on its website and apply there instead.
-  if (!job.apply_email && !job.apply_whatsapp && job.company_website && gmail.user) {
-    const found = await findCompanyEmail(job.company_website, log).catch(() => null);
+  // First the job's own page (company careers page / ATS), then the company website.
+  if (!job.apply_email && !job.apply_whatsapp && gmail.user && (job.apply_link || job.company_website)) {
+    const companyDomain = (siteOf(job.company_website || '') || {}).domain || '';
+    let found = job.apply_link ? await findEmailOnJobPage(job.apply_link, companyDomain).catch(() => null) : null;
+    let source = 'job page';
+    if (!found && job.company_website) {
+      found = await findCompanyEmail(job.company_website, log).catch(() => null);
+      source = 'company website';
+    }
     if (found) {
       if (store.alreadyApplied({ ...job, apply_email: found })) return skip(`already applied to ${found} recently`, { score: rs.score });
+      log(`  found ${found} on the ${source}`);
       job.apply_email = found;
-      Object.assign(base, { email: found, contact: found, emailSource: 'company website' });
+      Object.assign(base, { email: found, contact: found, emailSource: source });
     }
   }
 
@@ -161,9 +169,11 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
   log(`  waiting ${Math.round(wait / 1000)}s before sending...`);
   await sleep(wait);
 
+  let sent = {};
   try {
     if (channel === 'email') {
-      await sendApplication({ to: job.apply_email, subject: t.emailSubject, body: t.emailBody, cv, pdfPath, pdfName });
+      const info = await sendApplication({ to: job.apply_email, subject: t.emailSubject, body: t.emailBody, cv, pdfPath, pdfName });
+      sent = { title: job.title, company: job.company || '', email: job.apply_email, subject: t.emailSubject, messageId: info && info.messageId, pdf: pdfPath, pdfName };
     } else {
       await io.sendWhatsApp(job.apply_whatsapp, t.whatsappMessage, pdfPath, pdfName);
     }
@@ -173,7 +183,7 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
     return { ...result, status: 'error', reason: e.message };
   }
 
-  store.recordApplication(job, false);
+  store.recordApplication(job, false, sent);
   await notify(`✅ *Applied* via ${channel} to ${base.contact}${base.emailSource ? ` (found on the ${base.emailSource})` : ''}\n${job.title} @ ${job.company || '?'}\nScore ${score}/100\n${atsLine}`);
   return { ...result, status: 'applied' };
 }

@@ -89,8 +89,38 @@ function appliedToday() {
   return state.applied.filter((a) => a.day === today() && !a.dryRun).length;
 }
 
-function recordApplication(job, dryRun) {
-  state.applied.push({ key: contactKey(job), titleKey: hash(`${job.company}|${job.title}`), at: Date.now(), day: today(), dryRun });
+/** meta (live email applications): title, company, email, subject, messageId, pdf - used for the follow-up email. */
+function recordApplication(job, dryRun, meta = {}) {
+  state.applied.push({ key: contactKey(job), titleKey: hash(`${job.company}|${job.title}`), at: Date.now(), day: today(), dryRun, ...meta });
+  save();
+}
+
+// Companies that answered (any reply, rejection included): they never get a follow-up.
+const FREE_MAIL = /^(gmail|yahoo|outlook|hotmail|rediffmail|live|icloud)\./i;
+function markReplied(address) {
+  state.replied ??= {};
+  const a = String(address || '').toLowerCase();
+  if (!a.includes('@')) return;
+  state.replied[a] = Date.now();
+  const domain = a.split('@')[1];
+  if (!FREE_MAIL.test(domain)) state.replied[`@${domain}`] = Date.now();
+  save();
+}
+function hasReplied(email) {
+  const r = state.replied || {};
+  const a = String(email || '').toLowerCase();
+  const domain = a.split('@')[1] || '';
+  return Boolean(r[a] || (domain && !FREE_MAIL.test(domain) && r[`@${domain}`]));
+}
+
+/** Email applications sent `days` or more ago (but not more than 10 days later), with no reply and no follow-up yet. */
+function dueFollowUps(days) {
+  const now = Date.now();
+  return state.applied.filter((a) => !a.dryRun && a.email && a.messageId && !a.followedUpAt
+    && now - a.at >= days * 86400000 && now - a.at < (days + 10) * 86400000 && !hasReplied(a.email));
+}
+function markFollowedUp(entry) {
+  entry.followedUpAt = Date.now();
   save();
 }
 
@@ -110,7 +140,7 @@ function touchActive() {
 }
 const lastActive = () => state.lastActive || 0;
 
-module.exports = { touchActive, lastActive, markSeen, unmarkSeen, isSeen, startWork, endWork, retryUnfinished, alreadyApplied, appliedToday, recordApplication, logRow };
+module.exports = { touchActive, lastActive, markSeen, unmarkSeen, isSeen, startWork, endWork, retryUnfinished, alreadyApplied, appliedToday, recordApplication, logRow, markReplied, hasReplied, dueFollowUps, markFollowedUp };
 
 /** Email addresses of every live (non dry-run) application, to recognise replies from those companies. */
 const appliedEmails = () => [...new Set(state.applied.filter((a) => !a.dryRun && String(a.key).includes('@')).map((a) => a.key))];

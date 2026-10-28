@@ -504,7 +504,16 @@ async function handleLinkedIn(post) {
 }
 
 if (gmail.user && gmail.appPassword && !rules.dryRun) {
-  require('./replies').startReplyWatcher({ appliedEmails, isDone: isSeen, markDone: markSeen, notify, log });
+  const { paths } = require('./config');
+  const cvLoader = () => JSON.parse(fs.readFileSync(paths.masterCv, 'utf8'));
+  // The general (untailored) CV, rebuilt from cv/master-cv.json whenever it is attached to a reply.
+  const cvPdf = async (cv) => {
+    const file = path.join(paths.out, `${cv.name.replace(/\s+/g, '_')}_CV.pdf`);
+    await require('./pdf').renderPdf(cv, file);
+    return file;
+  };
+  require('./replies').startReplyWatcher({ appliedEmails, isDone: isSeen, markDone: markSeen, notify, log, cvLoader, cvPdf });
+  require('./followup').startFollowUps({ cvLoader, notify, log });
 }
 
 if (jsearch.key) {

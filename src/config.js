@@ -89,6 +89,23 @@ module.exports = {
     maxAgeHours: num(process.env.JSEARCH_MAX_AGE_HOURS, 48),
     country: process.env.JSEARCH_COUNTRY || 'in',
   },
+  // Details recruiters always ask for. The auto-reply only runs when current CTC, expected CTC and notice period are set.
+  candidate: {
+    currentCtc: process.env.CANDIDATE_CURRENT_CTC || '',
+    expectedCtc: process.env.CANDIDATE_EXPECTED_CTC || '',
+    notice: process.env.CANDIDATE_NOTICE_PERIOD || '',
+    preferredLocation: process.env.CANDIDATE_PREFERRED_LOCATION || '',
+    lastWorkingDay: process.env.CANDIDATE_LAST_WORKING_DAY || 'Currently employed; can join after the notice period',
+    availability: process.env.CANDIDATE_INTERVIEW_AVAILABILITY || 'Available for a call or interview at a time that suits you',
+  },
+  // Reply to recruiters who ask for CTC / notice / location details, in the same email thread, with the CV attached
+  autoReply: bool(process.env.AUTO_REPLY_RECRUITERS, true),
+  // One polite follow-up email when a company has not replied after this many days
+  followUp: {
+    enabled: bool(process.env.FOLLOW_UP, true),
+    afterDays: num(process.env.FOLLOW_UP_AFTER_DAYS, 6),
+    maxPerDay: num(process.env.FOLLOW_UP_MAX_PER_DAY, 8),
+  },
   gmail: {
     user: process.env.GMAIL_USER || '',
     appPassword: (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),
