@@ -47,10 +47,23 @@ const client = new Client({
   puppeteer: { headless: true, protocolTimeout: 180000, args: ['--no-sandbox', '--disable-setuid-sandbox'] },
 });
 
+// Every message the bot writes into the inbox group starts with this, so the bot never reads it back as a job post.
+const BOT_MARK = '🤖';
+
+/** Chat id of the job inbox group, once the chat list has been loaded. */
+function inboxId() {
+  if (!whatsapp.inboxGroup) return null;
+  for (const [id, name] of groupNames) if (String(name).trim().toLowerCase() === whatsapp.inboxGroup) return id;
+  return null;
+}
+
 async function notify(text) {
   if (!whatsapp.notifySelf || !client.info) return;
+  const inbox = inboxId();
+  const to = inbox || client.info.wid._serialized;
+  const body = inbox && !text.startsWith(BOT_MARK) ? `${BOT_MARK} ${text}` : text;
   try {
-    await withTimeout(client.sendMessage(client.info.wid._serialized, text), 30000, 'Self-notification');
+    await withTimeout(client.sendMessage(to, body), 30000, 'Self-notification');
   } catch (e) {
     log('notify failed:', e.message);
     restartIfBroken(e);
@@ -75,10 +88,12 @@ const withTimeout = (p, ms, what) =>
 
 // group id -> group name, filled from the chat list or lazily per message
 const groupNames = new Map();
-const isWatched = (name) => whatsapp.groups.includes(String(name || '').trim().toLowerCase());
+const isInbox = (name) => Boolean(whatsapp.inboxGroup) && String(name || '').trim().toLowerCase() === whatsapp.inboxGroup;
+const isWatched = (name) => whatsapp.groups.includes(String(name || '').trim().toLowerCase()) || isInbox(name);
 
 async function groupNameOf(msg) {
-  const id = msg.from;
+  // Your own messages (in the inbox group) come "from" you and go "to" the group.
+  const id = msg.fromMe ? msg.to : msg.from;
   if (!id || !id.endsWith('@g.us')) return null;
   if (!groupNames.has(id)) {
     const chat = await withTimeout(msg.getChat(), 30000, 'getChat');
@@ -87,12 +102,48 @@ async function groupNameOf(msg) {
   return groupNames.get(id);
 }
 
+/** Replies under a post in the inbox group (marked so the bot never reads its own reply). */
+async function reply(msg, text) {
+  try {
+    await withTimeout(msg.reply(`${BOT_MARK} ${text}`), 30000, 'Inbox reply');
+  } catch (e) {
+    log('inbox reply failed:', e.message);
+    restartIfBroken(e);
+  }
+}
+
+/** One message per inbox post: what was found and what the bot did with it. */
+function inboxSummary(results) {
+  if (!results.length) return 'No job found in this post (not an Angular / MEAN / frontend role, or not a hiring post).';
+  return results.map((r) => {
+    const head = `*${r.title}*${r.company ? ` @ ${r.company}` : ''}`;
+    const facts = [
+      r.score != null && r.score !== '' ? `Score: ${r.score}/100` : '',
+      r.experience ? `Experience asked: ${r.experience}` : '',
+      r.email ? `Email: ${r.email}` : '',
+      !r.email && r.link ? `Link: ${r.link}` : '',
+    ].filter(Boolean).join('\n');
+    const did = {
+      applied: `✅ Applied by ${r.channel === 'whatsapp' ? 'WhatsApp' : 'email'} with a tailored CV.`,
+      manual: `📝 No email in the post. Apply here yourself, your tailored CV is ready:\n${r.pdf || ''}`,
+      skipped: `⏭ Skipped: ${r.reason}`,
+      'daily-limit': `⏸ Daily limit reached, not sent today. CV: ${r.pdf || ''}`,
+      'dry-run': '🧪 Dry run: would apply.',
+      error: `❌ Could not apply: ${r.reason}`,
+    }[r.status] || r.status;
+    return [head, facts, did].filter(Boolean).join('\n');
+  }).join('\n\n');
+}
+
 let received = 0;
 
 async function handle(msg) {
   if (restarting) return; // not marked seen, so the backfill after the restart picks it up
   const name = await groupNameOf(msg);
   if (!isWatched(name)) return;
+  const inbox = isInbox(name);
+  if (msg.fromMe && !inbox) return; // only your own posts in the inbox group count, not what you write elsewhere
+  if ((msg.body || '').startsWith(BOT_MARK)) return; // the bot's own replies and alerts
   received++;
   const chat = { name };
 
@@ -119,14 +170,19 @@ async function handle(msg) {
   if (!image && text.trim().length < 40 && !mentionsRole) return log(`Short message in "${name}" (no Angular/frontend words), ignored`);
   if (!image && !text.trim()) return;
   const seenKey = text + (image ? image.data.slice(0, 5000) : '');
-  if (!markSeen(seenKey)) return log('duplicate post, skipped');
+  if (!markSeen(seenKey)) {
+    if (inbox) await reply(msg, 'Already checked this post earlier, so I did not apply again.');
+    return log('duplicate post, skipped');
+  }
 
   log(`New post in "${chat.name}": ${text.slice(0, 80).replace(/\s+/g, ' ')}${image ? ' [image]' : ''}`);
   const keys = [seenKey, mediaKey].filter(Boolean);
   startWork(keys); // if the bot dies before endWork, the post is checked again on next start
   busy = true;
   try {
-    await processPost({ text, image }, { sendWhatsApp, notify, log });
+    // Inbox posts get one summary reply in the group instead of the usual separate alerts.
+    const results = await processPost({ text, image }, { sendWhatsApp, notify: inbox ? async () => {} : notify, log });
+    if (inbox) await reply(msg, inboxSummary(results));
   } catch (e) {
     for (const k of keys) unmarkSeen(k); // checked again by the next re-scan (image posts are remembered by media id too)
     throw e;
@@ -270,6 +326,8 @@ function enqueue(msg, task = () => handle(msg)) {
 }
 
 client.on('message', (msg) => enqueue(msg));
+// Your own messages only arrive as message_create; handle() keeps just the ones you post in the inbox group.
+client.on('message_create', (msg) => { if (msg.fromMe) enqueue(msg); });
 
 // Posts that arrived while the bot was off (or while WhatsApp silently stopped sending events).
 let watchedChats = [];
@@ -296,7 +354,7 @@ async function backfillToday(chats, { quiet = false } = {}) {
         if (restartIfBroken(e)) return;
         continue;
       }
-      const recent = msgs.filter((m) => m.timestamp * 1000 >= since.getTime() && !m.fromMe);
+      const recent = msgs.filter((m) => m.timestamp * 1000 >= since.getTime() && (!m.fromMe || isInbox(chat.name)) && !(m.body || '').startsWith(BOT_MARK));
       const roleWord = (t) => whatsapp.roleKeywords.some((k) => t.toLowerCase().includes(k));
       const fresh = recent.filter((m) => (m.hasMedia
         ? !isSeen(`media:${m.id?._serialized || m.id?.id}`)

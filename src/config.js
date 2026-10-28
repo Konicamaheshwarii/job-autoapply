@@ -52,6 +52,9 @@ module.exports = {
     backfillDays: Math.max(1, num(process.env.BACKFILL_DAYS, 1)),
     // Windows: don't let the PC fall asleep when idle while the bot runs
     keepAwake: bool(process.env.KEEP_AWAKE, true),
+    // Your own "job inbox" group: paste LinkedIn (or any) job posts or screenshots there and the bot scores them,
+    // applies by email when it can, and replies in the group. All bot messages also go there when it is set.
+    inboxGroup: (process.env.WHATSAPP_INBOX_GROUP || '').trim().toLowerCase(),
   },
   // Read-only LinkedIn post search (needs a one-time `npm run linkedin-login`)
   linkedin: {

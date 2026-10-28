@@ -46,6 +46,7 @@ function findTitle(lines) {
     .trim();
   const m = t.match(new RegExp(`^(.{0,60}?${ROLE_WORD.source})`, 'i'));
   if (m) t = m[1];
+  t = t.replace(/^[^A-Za-z0-9.]+/, '').trim(); // "We are hiring! Senior..." leaves a leading "!"
   return t.length >= 3 ? t : null;
 }
 
@@ -86,6 +87,8 @@ function parseJobPost(raw) {
   const link = (text.match(/https?:\/\/[^\s)]+/i) || [])[0] || null;
 
   const company = field(lines, 'company(?: name)?|organi[sz]ation|client')
+    // "Senior Angular Developer at Acme Softech, Ahmedabad"
+    || (flat.match(/\b(?:[Dd]eveloper|[Ee]ngineer|[Ll]ead|[Aa]rchitect|[Dd]esigner)\s+(?:at|@)\s+([A-Z][\w&.-]*(?: [A-Z][\w&.-]*){0,3})/) || [])[1]
     || (flat.match(/\bwe at ([A-Z][\w&.\- ]{1,40}?) (?:are|is)\b/i) || [])[1]
     // "Dove Soft Ltd. is looking for..." at the start of a line
     || lines.map((l) => (l.match(/^([A-Z][\w&.\-]*(?: [A-Z][\w&.\-]*){0,4}) (?:is|are) (?:hiring|looking)\b/) || [])[1])

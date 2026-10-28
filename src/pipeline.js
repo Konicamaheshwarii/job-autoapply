@@ -66,7 +66,11 @@ ${String(r.reason).slice(0, 160)}`);
 }
 
 async function processJob(job, { cv, cvText, io, log, notify }) {
-  const base = { title: job.title, company: job.company, contact: job.apply_email || job.apply_whatsapp || job.apply_link || '' };
+  const exp = job.experience_min != null ? `${job.experience_min}${job.experience_max != null ? `-${job.experience_max}` : '+'} yrs` : '';
+  const base = {
+    title: job.title, company: job.company, contact: job.apply_email || job.apply_whatsapp || job.apply_link || '',
+    experience: exp, email: job.apply_email || '', link: job.apply_link || '',
+  };
   const skip = (reason, extra = {}) => ({ ...base, status: 'skipped', reason, ...extra });
 
   if (store.alreadyApplied(job)) return skip('already applied recently');
