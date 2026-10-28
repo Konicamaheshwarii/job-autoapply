@@ -55,11 +55,17 @@ async function collectJobs({ log }) {
 /** Runs a search round every few hours during the day. */
 function startJSearch({ onPost, log }) {
   if (!jsearch.key) return;
+  // Remembered on disk: a bot restart must not trigger an extra search (the free plan has ~200 requests a month).
+  const fs = require('fs');
+  const path = require('path');
+  const stamp = path.join(__dirname, '..', 'data', 'jsearch-last-run.txt');
   let lastRun = 0;
+  try { lastRun = Number(fs.readFileSync(stamp, 'utf8')) || 0; } catch {}
   async function tick() {
     const hour = new Date().getHours();
     if (hour >= jsearch.fromHour && hour < jsearch.toHour && Date.now() - lastRun >= jsearch.everyHours * 3600 * 1000) {
       lastRun = Date.now();
+      try { fs.writeFileSync(stamp, String(lastRun)); } catch {}
       try {
         for (const p of await collectJobs({ log })) await onPost(p);
       } catch (e) {
