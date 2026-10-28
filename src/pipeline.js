@@ -11,6 +11,7 @@ const { ruleScore } = require('./match');
 const { renderPdf } = require('./pdf');
 const { sendApplication, signature, domainCanReceive } = require('./mailer');
 const store = require('./store');
+const { findCompanyEmail } = require('./company-email');
 
 const masterCv = () => JSON.parse(fs.readFileSync(paths.masterCv, 'utf8'));
 const slug = (s) => String(s || '').replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').slice(0, 40);
@@ -112,6 +113,16 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
   const atsLine = `ATS keywords: ${original.score}% (original CV) → ${after.score}% (tailored CV)`
     + `\nMissing from CV: ${after.missing.join(', ') || 'none'}`;
 
+  // Only a portal link? Look for the company's own recruitment email on its website and apply there instead.
+  if (!job.apply_email && !job.apply_whatsapp && job.company_website && gmail.user) {
+    const found = await findCompanyEmail(job.company_website, log).catch(() => null);
+    if (found) {
+      if (store.alreadyApplied({ ...job, apply_email: found })) return skip(`already applied to ${found} recently`, { score: rs.score });
+      job.apply_email = found;
+      Object.assign(base, { email: found, contact: found, emailSource: 'company website' });
+    }
+  }
+
   const channel = job.apply_email && gmail.user ? 'email' : job.apply_whatsapp && io.sendWhatsApp ? 'whatsapp' : 'manual';
 
   const pdfName = `${slug(cv.name)}_${slug(job.title)}_Resume.pdf`;
@@ -163,7 +174,7 @@ async function processJob(job, { cv, cvText, io, log, notify }) {
   }
 
   store.recordApplication(job, false);
-  await notify(`✅ *Applied* via ${channel} to ${base.contact}\n${job.title} @ ${job.company || '?'}\nScore ${score}/100\n${atsLine}`);
+  await notify(`✅ *Applied* via ${channel} to ${base.contact}${base.emailSource ? ` (found on the ${base.emailSource})` : ''}\n${job.title} @ ${job.company || '?'}\nScore ${score}/100\n${atsLine}`);
   return { ...result, status: 'applied' };
 }
 

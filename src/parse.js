@@ -112,6 +112,7 @@ function parseJobPost(raw) {
     apply_email: emails[0] || null,
     apply_whatsapp: emails.length ? null : phones[0] || null,
     apply_link: link,
+    company_website: field(lines, 'website|company website') || null,
     summary: flat.slice(0, 160),
     parsedBy: 'rules',
     raw: text.slice(0, 3000),

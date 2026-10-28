@@ -26,6 +26,7 @@ function postText(j) {
     `Hiring: ${j.job_title}`,
     `Apply: ${j.job_apply_link || ''}`,
     j.employer_name && `Company: ${j.employer_name}`,
+    j.employer_website && `Website: ${j.employer_website}`,
     where && `Location: ${where}`,
     '',
     String(j.job_description || '').slice(0, 3500),

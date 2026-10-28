@@ -120,7 +120,7 @@ function inboxSummary(results) {
     const facts = [
       r.score != null && r.score !== '' ? `Score: ${r.score}/100` : '',
       r.experience ? `Experience asked: ${r.experience}` : '',
-      r.email ? `Email: ${r.email}` : '',
+      r.email ? `Email: ${r.email}${r.emailSource ? ` (found on the ${r.emailSource})` : ''}` : '',
       !r.email && r.link ? `Link: ${r.link}` : '',
     ].filter(Boolean).join('\n');
     const did = {
