@@ -27,7 +27,7 @@ function html(cv) {
 </style></head><body>
 <h1>${esc(cv.name.toUpperCase())}</h1>
 <div class="headline">${esc(cv.title)}</div>
-<div class="contact">${esc(cv.email)} | ${esc(cv.phone)} | ${esc(cv.location)}<br>${[cv.linkedin, cv.github, cv.portfolio].filter(Boolean).map(esc).join(' | ')}</div>
+<div class="contact">${esc(cv.email)} | ${esc(cv.phone)} | ${esc(cv.location)}<br>${[cv.linkedin, cv.github, cv.portfolio].filter(Boolean).map((u) => esc(String(u).replace(/^https?:\/\//, ''))).join(' | ')}</div>
 ${section('Summary', `<p>${esc(cv.summary)}</p>`)}
 ${section('Skills', Object.entries(cv.skills).map(([cat, list]) => `<p class="skill"><b>${esc(cat)}:</b> ${list.map(esc).join(', ')}</p>`).join(''))}
 ${section('Experience', cv.experience.map((e) => `
