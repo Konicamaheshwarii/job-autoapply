@@ -84,7 +84,9 @@ module.exports = {
     everyHours: num(process.env.JSEARCH_EVERY_HOURS, 4),
     fromHour: num(process.env.JSEARCH_FROM_HOUR, 9),
     toHour: num(process.env.JSEARCH_TO_HOUR, 21),
-    datePosted: process.env.JSEARCH_DATE_POSTED || 'today',
+    datePosted: process.env.JSEARCH_DATE_POSTED || '3days',
+    // Skip posts older than this, so only the latest jobs are applied to
+    maxAgeHours: num(process.env.JSEARCH_MAX_AGE_HOURS, 48),
     country: process.env.JSEARCH_COUNTRY || 'in',
   },
   gmail: {

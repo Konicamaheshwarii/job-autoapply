@@ -40,8 +40,12 @@ async function collectJobs({ log }) {
   const out = [];
   for (const q of jsearch.queries) {
     const jobs = await search(q);
-    const fresh = jobs.filter((j) => j.job_title && !TOO_SENIOR.test(j.job_title));
-    log(`JSearch "${q}": ${jobs.length} job(s), ${fresh.length} worth checking`);
+    // Only recent posts: the search window is 3 days (a "today" search is often empty), but older than
+    // maxAgeHours is skipped. Posts without a date are kept.
+    const minTs = Date.now() / 1000 - jsearch.maxAgeHours * 3600;
+    const recent = jobs.filter((j) => !j.job_posted_at_timestamp || j.job_posted_at_timestamp >= minTs);
+    const fresh = recent.filter((j) => j.job_title && !TOO_SENIOR.test(j.job_title));
+    log(`JSearch "${q}": ${jobs.length} job(s), ${jobs.length - recent.length} older than ${jsearch.maxAgeHours} h skipped, ${fresh.length} worth checking`);
     for (const j of fresh) {
       out.push({
         text: postText(j),
