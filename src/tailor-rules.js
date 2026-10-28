@@ -1,6 +1,10 @@
 // No-AI CV tailoring: reorders what is already in the CV so the job's keywords come first,
 // and fills a simple cover email. Used when AI is not needed or not available.
 const { keywordScore, canonical, mentions } = require('./ats');
+const { candidate } = require('./config');
+
+// "Immediate joiner" is a strong point for recruiters, so the application email says it when it is true.
+const immediate = /immediate/i.test(candidate.notice || '');
 
 function hits(text, jobKeywords) {
   return keywordScore(jobKeywords, text).matched.length;
@@ -97,10 +101,10 @@ function ruleTailor(cv, job) {
         ? `- Hands-on with ${listJoin(top.slice(0, 5))}, which match what you are looking for.`
         : '- Comfortable owning a feature end to end, from UI and APIs to testing and deployment.',
       '',
-      `My CV is attached${cv.portfolio ? `, and you can see my projects at ${cv.portfolio}` : ''}. I am available for ${interviewOffer(cv, job)} at your convenience.`,
+      `My CV is attached${cv.portfolio ? `, and you can see my projects at ${cv.portfolio}` : ''}.${immediate ? ' I am an immediate joiner and' : ' I am'} available for ${interviewOffer(cv, job)} at your convenience.`,
     ].join('\n'),
     whatsappMessage:
-`Hello, I'm ${cv.name}, a ${current.role} with ${cv.totalExperienceYears} years of experience (${strengths}). I'd like to apply for the ${role} role${at}. My CV is attached${cv.portfolio ? ` and my work is at ${cv.portfolio}` : ''}. Thank you!`,
+`Hello, I'm ${cv.name}, a ${current.role} with ${cv.totalExperienceYears} years of experience (${strengths})${immediate ? ', available to join immediately' : ''}. I'd like to apply for the ${role} role${at}. My CV is attached${cv.portfolio ? ` and my work is at ${cv.portfolio}` : ''}. Thank you!`,
   };
 }
 
