@@ -31,6 +31,9 @@ try {
   const old = Number(fs.readFileSync(pidFile, 'utf8'));
   if (old && old !== process.pid) {
     process.kill(old, 0); // throws if that process is gone
+    // After a reboot Windows can give the old pid to some other program, so it must really be node.
+    const name = require('child_process').execSync(`tasklist /FI "PID eq ${old}" /NH`, { encoding: 'utf8' });
+    if (!/node\.exe/i.test(name)) throw new Error('stale pid file');
     console.log(`Job bot is already running (pid ${old}). Stop it first: taskkill /PID ${old} /F`);
     process.exit(0);
   }
